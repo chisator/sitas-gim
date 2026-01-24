@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import { deleteRoutine } from "@/app/actions/trainer-actions"
 import { RenewRoutineDialog } from "@/components/renew-routine-dialog"
@@ -71,7 +72,7 @@ function ExerciseItem({ exercise }: { exercise: any }) {
 }
 
 export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCardProps) {
-  const [showDetails, setShowDetails] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showRenewDialog, setShowRenewDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
@@ -118,7 +119,7 @@ export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCa
   }, [])
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -157,40 +158,39 @@ export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCa
             <p className="text-sm font-medium">{exercises.length} ejercicios</p>
             <div className="relative">
               <div className="flex items-center gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
+                <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                  <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-                      Ver detalles
+                      {isOpen ? "Ocultar detalles" : "Ver detalles"}
+                      {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{routine.title}</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-4">
-                      {routine.description && (
-                        <div>
-                          <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
-                          <p className="text-sm text-muted-foreground">{routine.description}</p>
-                        </div>
-                      )}
-
-                      <div>
-                        <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
-                        {exercises.length > 0 ? (
-                          <ul className="space-y-3">
-                            {exercises.map((exercise: any, index: number) => (
-                              <ExerciseItem key={index} exercise={exercise} />
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No hay ejercicios detallados.</p>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="absolute left-0 right-0 top-full mt-2 z-10 w-full bg-popover border rounded-md shadow-md p-4">
+                    <div className="max-h-[60vh] overflow-y-auto">
+                      <div className="space-y-4">
+                        {routine.description && (
+                          <div>
+                            <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
+                            <p className="text-sm text-muted-foreground">{routine.description}</p>
+                          </div>
                         )}
+
+                        <div>
+                          <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
+                          {exercises.length > 0 ? (
+                            <ul className="space-y-3">
+                              {exercises.map((exercise: any, index: number) => (
+                                <ExerciseItem key={index} exercise={exercise} />
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No hay ejercicios detallados.</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <Button variant="outline" size="sm" asChild className="text-xs sm:text-sm">
                   <Link href={`/entrenador/editar-rutina/${routine.id}`}>Editar</Link>

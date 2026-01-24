@@ -3,9 +3,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+
+// ... imports remain mostly the same, remove Dialog imports if unused
 
 interface RoutineCardProps {
   routine: any
@@ -70,7 +73,7 @@ function ExerciseItem({ exercise }: { exercise: any }) {
 }
 
 export function RoutineCard({ routine, attendance, athleteId, isPast = false }: RoutineCardProps) {
-  const [showDetails, setShowDetails] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
   const exercises = Array.isArray(routine.exercises) ? routine.exercises : []
@@ -85,7 +88,7 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false }: 
   }
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -118,42 +121,23 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false }: 
         )}
 
         <div className="mt-auto">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full">
-                Ver detalles y ejercicios
-              </Button>
-            </DialogTrigger>
-
-
-            <DialogContent
-              className="max-w-md max-h-[80vh] overflow-y-auto"
-              onPointerDownOutside={(e) => {
-                const target = e.detail.originalEvent.target as HTMLElement
-                const timerContainer = document.getElementById("workout-timer-container")
-
-                // Check if the click target is inside the timer container
-                if (timerContainer && timerContainer.contains(target)) {
-                  e.preventDefault()
-                } else if (target.closest("[data-radix-collection-item]")) {
-                  e.preventDefault()
-                }
-              }}
-            >
-              <DialogHeader>
-                <DialogTitle>{routine.title}</DialogTitle>
-              </DialogHeader>
-
+          <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full space-y-2">
+            <div className="flex items-center justify-between space-x-4">
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full flex justify-between items-center">
+                  <span>Ver detalles y ejercicios</span>
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent className="space-y-4 pt-4 border-t mt-4">
               <div className="space-y-4">
-                {/* ... existing content ... */}
                 {routine.description && (
                   <div>
                     <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
                     <p className="text-sm text-muted-foreground">{routine.description}</p>
                   </div>
                 )}
-
-                {/* ... */}
 
                 <div>
                   <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
@@ -165,12 +149,8 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false }: 
                   {exercises.length === 0 && <p className="text-sm text-muted-foreground">No hay ejercicios en esta rutina.</p>}
                 </div>
               </div>
-
-              {/* Insert Timer here, perfectly visible when dialog is open */}
-
-
-            </DialogContent>
-          </Dialog>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </CardContent>
     </Card>

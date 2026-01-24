@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   title: "SITAS FITNESS",
   description: "SITAS FITNESS",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/Logo.svg",
+    apple: "/Logo.svg",
   },
   manifest: "/manifest.json",
   appleWebApp: {
