@@ -1,0 +1,2 @@
+-- Este archivo está vacío en la nueva versión de gimnasio
+-- Los datos de ejemplo anteriores (deportes) ya no son necesarios
