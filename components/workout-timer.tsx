@@ -93,8 +93,10 @@ export function WorkoutTimer() {
             if (audioRef.current) {
                 // Unlock audio context on mobile
                 audioRef.current.play().then(() => {
-                    audioRef.current?.pause();
-                    audioRef.current.currentTime = 0;
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                    }
                 }).catch(() => { });
             }
         }
