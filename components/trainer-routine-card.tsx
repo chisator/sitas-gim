@@ -153,107 +153,104 @@ export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCa
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{routine.description}</p>
         )}
 
-        <div className="mt-auto space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-auto space-y-4">
+          <div className="flex items-center justify-between">
             <p className="text-sm font-medium">{exercises.length} ejercicios</p>
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-                      {isOpen ? "Ocultar detalles" : "Ver detalles"}
-                      {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="absolute left-0 right-0 top-full mt-2 z-10 w-full bg-popover border rounded-md shadow-md p-4">
-                    <div className="max-h-[60vh] overflow-y-auto">
-                      <div className="space-y-4">
-                        {routine.description && (
-                          <div>
-                            <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
-                            <p className="text-sm text-muted-foreground">{routine.description}</p>
-                          </div>
-                        )}
 
-                        <div>
-                          <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
-                          {exercises.length > 0 ? (
-                            <ul className="space-y-3">
-                              {exercises.map((exercise: any, index: number) => (
-                                <ExerciseItem key={index} exercise={exercise} />
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No hay ejercicios detallados.</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild className="text-xs sm:text-sm">
+                <Link href={`/entrenador/editar-rutina/${routine.id}`}>Editar</Link>
+              </Button>
 
-                <Button variant="outline" size="sm" asChild className="text-xs sm:text-sm">
-                  <Link href={`/entrenador/editar-rutina/${routine.id}`}>Editar</Link>
-                </Button>
+              {/* Three-dots menu trigger */}
+              <div ref={menuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowMenu((s) => !s)}
+                  className="p-2 rounded hover:bg-muted/50 text-sm"
+                  aria-label="Más acciones"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="5" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="12" cy="19" r="1.5" />
+                  </svg>
+                </button>
 
-                {/* Three-dots menu trigger */}
-                <div ref={menuRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowMenu((s) => !s)}
-                    className="p-2 rounded hover:bg-muted/50 text-sm"
-                    aria-label="Más acciones"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <circle cx="12" cy="5" r="1.5" />
-                      <circle cx="12" cy="12" r="1.5" />
-                      <circle cx="12" cy="19" r="1.5" />
-                    </svg>
-                  </button>
+                {showMenu && (
+                  <div className="absolute right-0 mt-2 w-44 rounded-md border bg-popover p-1 shadow-lg z-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false)
+                        handleDelete()
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-accent/20 rounded"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? "Eliminando..." : "Eliminar"}
+                    </button>
 
-                  {showMenu && (
-                    <div className="absolute right-0 mt-2 w-44 rounded-md border bg-popover p-1 shadow-lg z-50">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMenu(false)
-                          handleDelete()
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-accent/20 rounded"
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? "Eliminando..." : "Eliminar"}
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false)
+                        setShowRenewDialog(true)
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent/20 rounded"
+                      disabled={isDeleting}
+                    >
+                      Renovar
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMenu(false)
-                          setShowRenewDialog(true)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent/20 rounded"
-                        disabled={isDeleting}
-                      >
-                        Renovar
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMenu(false)
-                          setShowExportDialog(true)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent/20 rounded"
-                        disabled={isDeleting}
-                      >
-                        Descargar
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false)
+                        setShowExportDialog(true)
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent/20 rounded"
+                      disabled={isDeleting}
+                    >
+                      Descargar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full flex justify-between items-center text-xs sm:text-sm border border-input hover:bg-accent hover:text-accent-foreground">
+                <span>{isOpen ? "Ocultar detalles" : "Ver detalles y ejercicios"}</span>
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4 border-t mt-4">
+              <div className="space-y-4">
+                {routine.description && (
+                  <div>
+                    <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
+                    <p className="text-sm text-muted-foreground">{routine.description}</p>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
+                  {exercises.length > 0 ? (
+                    <ul className="space-y-3">
+                      {exercises.map((exercise: any, index: number) => (
+                        <ExerciseItem key={index} exercise={exercise} />
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay ejercicios detallados.</p>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </CardContent>
 

@@ -65,14 +65,19 @@ export default async function AdminPage() {
               <p className="text-xs text-muted-foreground">Panel de Administración</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900">
+              <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-purple-100 text-purple-800 dark:bg-purple-900">
                 Administrador
               </Badge>
             </div>
-            <LogoutButton />
+            <div className="sm:hidden">
+              <LogoutButton iconOnly />
+            </div>
+            <div className="hidden sm:block">
+              <LogoutButton />
+            </div>
           </div>
         </div>
       </header>

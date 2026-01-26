@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
+import { toast } from "sonner"
+
 export function WorkoutTimer() {
     const [isOpen, setIsOpen] = useState(false)
     const [time, setTime] = useState(0)
@@ -27,39 +29,52 @@ export function WorkoutTimer() {
         }
     }
 
-    const playBeep = () => {
+    // ... imports
+
+    const playAlarm = () => {
         try {
             const ctx = audioContextRef.current
             if (!ctx) return
 
-            const osc = ctx.createOscillator()
-            const gainNode = ctx.createGain()
+            // Secuencia de 3 beeps
+            const now = ctx.currentTime
+            const beeps = [0, 0.4, 0.8] // Tiempos de inicio
 
-            osc.connect(gainNode)
-            gainNode.connect(ctx.destination)
+            beeps.forEach(startTime => {
+                const osc = ctx.createOscillator()
+                const gainNode = ctx.createGain()
 
-            osc.type = 'sine'
-            osc.frequency.setValueAtTime(880, ctx.currentTime) // 880Hz
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3)
+                osc.connect(gainNode)
+                gainNode.connect(ctx.destination)
 
-            gainNode.gain.setValueAtTime(0.5, ctx.currentTime)
-            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+                osc.type = 'sine'
+                osc.frequency.setValueAtTime(880, now + startTime)
+                osc.frequency.exponentialRampToValueAtTime(440, now + startTime + 0.2) // Caída de tono para efecto alarma
 
-            osc.start()
-            osc.stop(ctx.currentTime + 0.3)
+                gainNode.gain.setValueAtTime(0.5, now + startTime)
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + startTime + 0.2)
+
+                osc.start(now + startTime)
+                osc.stop(now + startTime + 0.2)
+            })
+
+            // Vibración (pattern: vibrar 200, pausa 100, vibrar 200...)
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200, 100, 400])
+            }
+
         } catch (e) {
-            console.error("Error generating beep:", e)
+            console.error("Error generating alarm:", e)
         }
     }
 
+    // Effect to handle timer countdown
     useEffect(() => {
         if (isActive) {
             intervalRef.current = setInterval(() => {
                 setTime((prevTime) => {
                     if (mode === "timer") {
-                        if (prevTime <= 1) {
-                            setIsActive(false)
-                            playBeep()
+                        if (prevTime <= 0) {
                             return 0
                         }
                         return prevTime - 1
@@ -75,6 +90,25 @@ export function WorkoutTimer() {
             if (intervalRef.current) clearInterval(intervalRef.current)
         }
     }, [isActive, mode])
+
+    // Effect to handle timer completion
+    useEffect(() => {
+        if (mode === "timer" && time === 0 && isActive) {
+            setIsActive(false)
+            playAlarm()
+            toast("¡Tiempo terminado!", {
+                description: "El temporizador ha llegado a cero.",
+                duration: 5000,
+                action: {
+                    label: "Reiniciar",
+                    onClick: () => {
+                        setTimerMode(presetTime)
+                        setIsActive(true)
+                    }
+                }
+            })
+        }
+    }, [time, isActive, mode, presetTime])
 
     const toggleTimer = () => {
         if (!isActive) {
