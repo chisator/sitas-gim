@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/logout-button"
 import { RoutineCard } from "@/components/routine-card"
 import { StatsCard } from "@/components/stats-card"
 import Image from "next/image"
+import { ActivitiesCarousel } from "@/components/activities-carousel"
 
 export default async function DeportistaPage() {
   const supabase = await createClient()
@@ -105,9 +106,13 @@ export default async function DeportistaPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-3xl font-bold text-balance">Bienvenido, {profile?.full_name}</h2>
           <p className="text-muted-foreground mt-1">Aquí puedes ver tus rutinas y seguir tu progreso</p>
+        </div>
+
+        <div className="mb-8">
+          <ActivitiesCarousel />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 mb-8">

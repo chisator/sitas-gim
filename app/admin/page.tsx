@@ -174,6 +174,25 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
 
+          <Link href="/admin/eventos">
+            <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clases y Eventos</CardTitle>
+                <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center text-sm text-muted-foreground">
+                  Gestionar agenda
+                  <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link href="/admin/ejercicios">
             <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

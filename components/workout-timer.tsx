@@ -31,19 +31,16 @@ export function WorkoutTimer() {
     const playAlarm = () => {
         if (!audioRef.current) return
 
-        // Play 3 times
-        const play = (count: number) => {
-            if (count <= 0) return
-            audioRef.current!.currentTime = 0
-            audioRef.current!.play().catch(e => console.error("Play error:", e))
-            setTimeout(() => play(count - 1), 600)
-        }
-        play(3)
-
-        // Vibración
+        // Vibración (siempre vibra, es útil)
         if (typeof navigator !== "undefined" && navigator.vibrate) {
-            navigator.vibrate([200, 100, 200, 100, 400])
+            navigator.vibrate(500)
         }
+
+        if (isMuted) return
+
+        // Play 1 time
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch(e => console.error("Play error:", e))
     }
 
     // Effect to handle timer countdown
