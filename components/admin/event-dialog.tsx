@@ -453,8 +453,8 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                                             <SelectContent>
                                                 <SelectItem value="1">No repetir (Solo una vez)</SelectItem>
                                                 <SelectItem value="4">Por 1 mes (4 semanas)</SelectItem>
-                                                <SelectItem value="8">Por 2 meses (8 semanas)</SelectItem>
-                                                <SelectItem value="12">Por 3 meses (12 semanas)</SelectItem>
+                                                <SelectItem value="26">Por 6 meses (26 semanas)</SelectItem>
+                                                <SelectItem value="52">Por 1 año (52 semanas)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     )}

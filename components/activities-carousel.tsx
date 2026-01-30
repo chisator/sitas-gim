@@ -20,6 +20,7 @@ type WeeklySchedule = {
     day: string
     time: string
     instructor: string
+    isCancelled?: boolean
 }
 
 type ActivityType = {
@@ -91,7 +92,12 @@ export function ActivitiesCarousel() {
 
                 const exists = activity.schedules.some(s => s.day === dayName && s.time === timeStr)
                 if (!exists) {
-                    activity.schedules.push({ day: dayName, time: timeStr, instructor })
+                    activity.schedules.push({
+                        day: dayName,
+                        time: timeStr,
+                        instructor,
+                        isCancelled: event.is_cancelled
+                    })
                 }
             })
 
@@ -138,9 +144,12 @@ export function ActivitiesCarousel() {
                         <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                             <div className="p-1 h-full">
                                 <Card className={`h-[280px] flex flex-col border-0 shadow-lg overflow-hidden relative group cursor-pointer transition-all hover:scale-[1.01]
-                                    ${index % 3 === 0 ? "bg-gradient-to-br from-blue-600 to-violet-600" :
-                                        index % 3 === 1 ? "bg-gradient-to-br from-emerald-500 to-teal-600" :
-                                            "bg-gradient-to-br from-orange-500 to-red-600"
+                                    ${index % 6 === 0 ? "bg-gradient-to-br from-blue-600 to-violet-600" :
+                                        index % 6 === 1 ? "bg-gradient-to-br from-emerald-500 to-teal-600" :
+                                            index % 6 === 2 ? "bg-gradient-to-br from-orange-500 to-red-600" :
+                                                index % 6 === 3 ? "bg-gradient-to-br from-pink-500 to-rose-600" :
+                                                    index % 6 === 4 ? "bg-gradient-to-br from-indigo-500 to-purple-600" :
+                                                        "bg-gradient-to-br from-cyan-500 to-blue-600"
                                     } text-white`
                                 }>
                                     {/* Abstract Pattern overlay */}
@@ -181,11 +190,18 @@ export function ActivitiesCarousel() {
                                                             </div>
                                                             <div className="flex flex-wrap gap-2 pl-1">
                                                                 {groupedByDay[day].sort((a, b) => a.time.localeCompare(b.time)).map((slot, sIdx) => (
-                                                                    <div key={sIdx} className="flex items-center bg-white/10 rounded px-2 py-0.5 text-white/90 text-xs">
-                                                                        <Clock className="w-3 h-3 mr-1 opacity-70" />
+                                                                    <div
+                                                                        key={sIdx}
+                                                                        className={`flex items-center rounded px-2 py-0.5 text-xs transition-colors
+                                                                            ${slot.isCancelled
+                                                                                ? "bg-red-500/20 text-white/50 line-through decoration-white/40"
+                                                                                : "bg-white/10 text-white/90"
+                                                                            }`}
+                                                                        title={slot.isCancelled ? "Clase suspendida" : `Instructor: ${slot.instructor}`}
+                                                                    >
+                                                                        <Clock className={`w-3 h-3 mr-1 ${slot.isCancelled ? "opacity-40" : "opacity-70"}`} />
                                                                         {slot.time}
-                                                                        {/* Optional: Show instructor tooltip or distinct indicator if needed, 
-                                                                            but user wanted "less space", so keeping it simple */}
+                                                                        {slot.isCancelled && <span className="no-underline ml-1 text-[10px] opacity-70">(Susp.)</span>}
                                                                     </div>
                                                                 ))}
                                                             </div>
