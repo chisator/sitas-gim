@@ -88,11 +88,11 @@ export default async function AdminPage() {
           <p className="text-muted-foreground mt-1">Gestiona usuarios, rutinas y asignaciones del gimnasio</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-5 mb-8">
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-5 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Total Usuarios</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -101,15 +101,15 @@ export default async function AdminPage() {
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalUsers}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalUsers}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Deportistas</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Deportistas</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -118,15 +118,15 @@ export default async function AdminPage() {
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalAthletes}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalAthletes}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Entrenadores</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Entrenadores</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -135,15 +135,15 @@ export default async function AdminPage() {
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalTrainers}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalTrainers}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Asignaciones</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Asignaciones</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -152,15 +152,15 @@ export default async function AdminPage() {
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{assignments?.length || 0}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{assignments?.length || 0}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rutinas</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Rutinas</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -169,21 +169,21 @@ export default async function AdminPage() {
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{totalRoutines}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalRoutines}</div>
             </CardContent>
           </Card>
 
           <Link href="/admin/eventos">
             <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Clases y Eventos</CardTitle>
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+                <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Clases/Eventos</CardTitle>
+                <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center text-sm text-muted-foreground">
+              <CardContent className="p-2 pt-0">
+                <div className="flex items-center text-[10px] sm:text-xs text-muted-foreground">
                   Gestionar agenda
                   <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -195,14 +195,14 @@ export default async function AdminPage() {
 
           <Link href="/admin/ejercicios">
             <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Catálogo Ejercicios</CardTitle>
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+                <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Catálogo Ejer.</CardTitle>
+                <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center text-sm text-muted-foreground">
+              <CardContent className="p-2 pt-0">
+                <div className="flex items-center text-[10px] sm:text-xs text-muted-foreground">
                   Gestionar biblioteca
                   <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

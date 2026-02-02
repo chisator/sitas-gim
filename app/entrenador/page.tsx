@@ -138,11 +138,11 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
         <div className="mb-6">
           <TrainerUserFilter athletes={athletes || []} />
         </div>
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-3 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Rutinas</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Total Rutinas</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -151,15 +151,15 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold">{totalRoutines}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalRoutines}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Próximas</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Próximas</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -168,15 +168,15 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold">{upcomingRoutines.length}</div>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{upcomingRoutines.length}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuarios Asignados</CardTitle>
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+              <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Asignados</CardTitle>
+              <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -185,9 +185,9 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
                 />
               </svg>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold">{totalAssignedUsers}</div>
-              <p className="text-xs text-muted-foreground">Usuarios asignados a ti</p>
+            <CardContent className="p-2 pt-0">
+              <div className="text-lg sm:text-xl font-bold">{totalAssignedUsers}</div>
+              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Usuarios asignados</p>
             </CardContent>
           </Card>
         </div>
@@ -196,7 +196,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
           <div>
             <h3 className="text-2xl font-bold mb-4">Próximas Rutinas</h3>
             {upcomingRoutines.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 items-start">
                 {upcomingRoutines.map((routine: any, index: number) => (
                   <TrainerRoutineCard key={routine.id} routine={routine} index={index} />
                 ))}
@@ -216,7 +216,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
           <div>
             <h3 className="text-2xl font-bold mb-4">Rutinas Anteriores</h3>
             {pastRoutines.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 items-start">
                 {pastRoutines.slice(0, 4).map((routine: any, index: number) => (
                   <TrainerRoutineCard key={routine.id} routine={routine} isPast index={index} />
                 ))}

@@ -139,7 +139,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
 
   return (
     <Card
-      className={`h-full flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
+      className={`flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
       style={glowStyle}
     >
       <CardHeader>

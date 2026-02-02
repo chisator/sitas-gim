@@ -111,7 +111,7 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false, in
 
   return (
     <Card
-      className={`h-full flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
+      className={`flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
       style={glowStyle}
     >
       <CardHeader>

@@ -120,7 +120,7 @@ export default async function DeportistaPage() {
           <div>
             <h3 className="text-2xl font-bold mb-4">Próximas Rutinas</h3>
             {upcomingRoutines && upcomingRoutines.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 items-start">
                 {upcomingRoutines.map((routine: any, index: number) => (
                   <RoutineCard
                     key={routine.id}
@@ -142,7 +142,7 @@ export default async function DeportistaPage() {
           <div>
             <h3 className="text-2xl font-bold mb-4">Rutinas Anteriores</h3>
             {pastRoutines && pastRoutines.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 items-start">
                 {pastRoutines.slice(0, 4).map((routine: any, index: number) => (
                   <RoutineCard
                     key={routine.id}

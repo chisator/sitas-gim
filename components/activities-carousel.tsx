@@ -161,6 +161,16 @@ export function ActivitiesCarousel() {
                                         <CardTitle className="text-2xl font-bold tracking-tight text-white/95 truncate" title={activity.title}>
                                             {activity.title}
                                         </CardTitle>
+                                        {/* Alerta de suspensión */}
+                                        {activity.schedules.some(s => s.isCancelled) && (
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                {activity.schedules.filter(s => s.isCancelled).map((s, i) => (
+                                                    <p key={i} className="text-[10px] leading-tight font-bold text-red-200 bg-red-900/40 px-1.5 py-0.5 rounded w-fit border border-red-500/30">
+                                                        ⚠️ Clase de las {s.time} ({s.day}) suspendida
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
                                     </CardHeader>
 
                                     <CardContent className="relative z-10 flex-1 overflow-auto pt-2 scrollbar-none">
