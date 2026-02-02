@@ -71,7 +71,16 @@ function ExerciseItem({ exercise }: { exercise: any }) {
   )
 }
 
-export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCardProps) {
+interface TrainerRoutineCardProps {
+  routine: any
+  isPast?: boolean
+  index?: number
+}
+
+// ... (ExerciseItem remains same)
+
+export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: TrainerRoutineCardProps) {
+  // ... (hooks remain same)
   const [isOpen, setIsOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showRenewDialog, setShowRenewDialog] = useState(false)
@@ -90,6 +99,7 @@ export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCa
     })
   }
 
+  // ... (handlers remain same)
   const handleDelete = async () => {
     if (!confirm("¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.")) {
       return
@@ -118,8 +128,20 @@ export function TrainerRoutineCard({ routine, isPast = false }: TrainerRoutineCa
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
+  // Estilos condicionales
+  const borderColorClass = index % 2 === 0 ? "border-primary" : "border-secondary"
+
+  const glowStyle = {
+    boxShadow: index % 2 === 0
+      ? "0 0 15px -3px var(--primary)"
+      : "0 0 15px -3px var(--secondary)"
+  }
+
   return (
-    <Card className="h-full flex flex-col">
+    <Card
+      className={`h-full flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
+      style={glowStyle}
+    >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">

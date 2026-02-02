@@ -72,7 +72,17 @@ function ExerciseItem({ exercise }: { exercise: any }) {
   )
 }
 
-export function RoutineCard({ routine, attendance, athleteId, isPast = false }: RoutineCardProps) {
+interface RoutineCardProps {
+  routine: any
+  attendance?: any
+  athleteId: string
+  isPast?: boolean
+  index?: number
+}
+
+// ... (ExerciseItem remains same)
+
+export function RoutineCard({ routine, attendance, athleteId, isPast = false, index = 0 }: RoutineCardProps) {
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
@@ -87,8 +97,23 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false }: 
     })
   }
 
+  // Estilos condicionales basados en el índice (Par: Celeste, Impar: Rosa)
+  // Usamos style inline para las sombras con variables CSS para mayor precisión si Tailwind no lo pilla bien,
+  // pero intentaremos con clases arbitrarias de Tailwind primero.
+  const borderColorClass = index % 2 === 0 ? "border-primary" : "border-secondary"
+
+  // Sombra personalizada tipo "neon glow"
+  const glowStyle = {
+    boxShadow: index % 2 === 0
+      ? "0 0 15px -3px var(--primary)"
+      : "0 0 15px -3px var(--secondary)"
+  }
+
   return (
-    <Card className="h-full flex flex-col">
+    <Card
+      className={`h-full flex flex-col border transition-shadow bg-card/50 ${borderColorClass}`}
+      style={glowStyle}
+    >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">

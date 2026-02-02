@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImportExercisesDialog } from "@/components/import-exercises-dialog"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Command,
@@ -288,9 +288,6 @@ export function CreateRoutineForm({ athletes, creatorId, trainers = [], isAdmin 
               <Button type="button" variant="outline" onClick={() => setShowImportDialog(true)}>
                 Importar Ejercicios
               </Button>
-              <Button type="button" variant="outline" onClick={addExercise}>
-                Agregar Ejercicio
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -386,6 +383,10 @@ export function CreateRoutineForm({ athletes, creatorId, trainers = [], isAdmin 
               </div>
             </div>
           ))}
+          <Button type="button" variant="outline" onClick={addExercise} className="w-full border-dashed">
+            <Plus className="mr-2 h-4 w-4" />
+            Agregar Ejercicio
+          </Button>
         </CardContent>
       </Card>
 

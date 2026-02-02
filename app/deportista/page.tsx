@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/components/logout-button"
 import { RoutineCard } from "@/components/routine-card"
-import { StatsCard } from "@/components/stats-card"
 import Image from "next/image"
 import { ActivitiesCarousel } from "@/components/activities-carousel"
 
@@ -115,20 +114,19 @@ export default async function DeportistaPage() {
           <ActivitiesCarousel />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          <StatsCard title="Rutinas Totales" value={totalRoutines} icon="calendar" />
-        </div>
+
 
         <div className="space-y-8">
           <div>
             <h3 className="text-2xl font-bold mb-4">Próximas Rutinas</h3>
             {upcomingRoutines && upcomingRoutines.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {upcomingRoutines.map((routine: any) => (
+                {upcomingRoutines.map((routine: any, index: number) => (
                   <RoutineCard
                     key={routine.id}
                     routine={routine}
                     athleteId={user.id}
+                    index={index}
                   />
                 ))}
               </div>
@@ -145,12 +143,13 @@ export default async function DeportistaPage() {
             <h3 className="text-2xl font-bold mb-4">Rutinas Anteriores</h3>
             {pastRoutines && pastRoutines.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {pastRoutines.slice(0, 4).map((routine: any) => (
+                {pastRoutines.slice(0, 4).map((routine: any, index: number) => (
                   <RoutineCard
                     key={routine.id}
                     routine={routine}
                     athleteId={user.id}
                     isPast
+                    index={index}
                   />
                 ))}
               </div>

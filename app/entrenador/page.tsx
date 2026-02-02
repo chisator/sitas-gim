@@ -197,8 +197,8 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
             <h3 className="text-2xl font-bold mb-4">Próximas Rutinas</h3>
             {upcomingRoutines.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {upcomingRoutines.map((routine: any) => (
-                  <TrainerRoutineCard key={routine.id} routine={routine} />
+                {upcomingRoutines.map((routine: any, index: number) => (
+                  <TrainerRoutineCard key={routine.id} routine={routine} index={index} />
                 ))}
               </div>
             ) : (
@@ -217,8 +217,8 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
             <h3 className="text-2xl font-bold mb-4">Rutinas Anteriores</h3>
             {pastRoutines.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {pastRoutines.slice(0, 4).map((routine: any) => (
-                  <TrainerRoutineCard key={routine.id} routine={routine} isPast />
+                {pastRoutines.slice(0, 4).map((routine: any, index: number) => (
+                  <TrainerRoutineCard key={routine.id} routine={routine} isPast index={index} />
                 ))}
               </div>
             ) : (
