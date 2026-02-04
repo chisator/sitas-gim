@@ -57,15 +57,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="w-full max-w-md">
+    <div className="flex min-h-screen w-full items-center justify-center p-6 from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="w-full max-w-md relative bottom-20">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2 text-center">
             {/* Logo eliminado por rebranding */}
-            <h1 className="text-3xl font-bold">SITAS FITNESS</h1>
-            <p className="text-muted-foreground">Sistema de gestión de entrenamientos</p>
+            {/* Logo principal */}
+            <Logo size={200} />
+            {/*
+            <div className="relative w-72 h-72 mr-2 top-20">
+              <Image src="/logo.png" alt="SITAS FITNESS" fill className="object-contain" priority />
+            </div>
+            */}
+            <p className="text-muted-foreground z-10">Sistema de gestión de entrenamientos</p>
           </div>
-          <Card>
+          <Card className="z-20">
             <CardHeader>
               <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
               <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
@@ -107,3 +113,117 @@ export default function LoginPage() {
     </div>
   )
 }
+export function Logo({ size = 250 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 400 400"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        {/* Glow rosa */}
+        <filter id="glowPink" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur1" />
+          <feGaussianBlur stdDeviation="10" result="blur2" />
+          <feMerge>
+            <feMergeNode in="blur2" />
+            <feMergeNode in="blur1" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Glow celeste */}
+        <filter id="glowCyan" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur1" />
+          <feGaussianBlur stdDeviation="10" result="blur2" />
+          <feMerge>
+            <feMergeNode in="blur2" />
+            <feMergeNode in="blur1" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Animaciones */}
+        <style>{`
+          .startup {
+            animation: startup 2s ease-out forwards, flicker 3.5s infinite 2s;
+          }
+
+          .startup-slow {
+            animation: startup 3.5s ease-out forwards, flicker 4s infinite 2.5s;
+          }
+
+          @keyframes startup {
+            0%   { opacity: 0; }
+            5%   { opacity: 1; }
+            10%  { opacity: 0.2; }
+            15%  { opacity: 1; }
+            20%  { opacity: 0.3; }
+            25%  { opacity: 1; }
+            100% { opacity: 1; }
+          }
+
+          @keyframes flicker {
+            0% { opacity: 1; }
+            3% { opacity: 0.4; }
+            6% { opacity: 1; }
+            7% { opacity: 0.2; }
+            10% { opacity: 1; }
+            100% { opacity: 1; }
+          }
+        `}</style>
+      </defs>
+
+      {/* Fondo */}
+      <circle cx="200" cy="200" r="150" fill="#050505" />
+
+      {/* SITAS */}
+      <text
+        x="40"
+        y="155"
+        fontSize="30"
+        fontFamily="Arial, sans-serif"
+        fontWeight="bold"
+        fill="#ff4fa3"
+        filter="url(#glowPink)"
+        transform="rotate(-18 100 125)"
+        className="startup"
+      >
+        SITAS
+      </text>
+
+      {/* FITNESS */}
+      <text
+        x="85"
+        y="215"
+        fontSize="54"
+        fontFamily="Arial, sans-serif"
+        fontWeight="bold"
+        fill="#5ff2e8"
+        filter="url(#glowCyan)"
+        className="startup-slow"
+      >
+        FITNESS
+      </text>
+
+      {/* CENTER */}
+      <text
+        x="95"
+        y="275"
+        fontSize="54"
+        fontFamily="Arial, sans-serif"
+        fontWeight="bold"
+        fill="#5ff2e8"
+        filter="url(#glowCyan)"
+        className="startup-slow"
+      >
+        CENTER
+      </text>
+    </svg>
+  );
+}
+
+
+
+
