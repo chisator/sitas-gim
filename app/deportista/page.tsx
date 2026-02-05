@@ -6,6 +6,7 @@ import { LogoutButton } from "@/components/logout-button"
 import { RoutineCard } from "@/components/routine-card"
 import Image from "next/image"
 import { ActivitiesCarousel } from "@/components/activities-carousel"
+import { Logo } from "@/components/logo"
 
 export default async function DeportistaPage() {
   const supabase = await createClient()
@@ -81,11 +82,9 @@ export default async function DeportistaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
           <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-lg font-bold">SITAS FITNESS</h1>
-            </div>
+            <Logo size={80} />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">

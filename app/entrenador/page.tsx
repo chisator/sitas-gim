@@ -7,6 +7,7 @@ import { LogoutButton } from "@/components/logout-button"
 import { TrainerRoutineCard } from "@/components/trainer-routine-card"
 import Link from "next/link"
 import { TrainerUserFilter } from "@/components/trainer-user-filter"
+import { Logo } from "@/components/logo"
 
 export default async function EntrenadorPage({ searchParams }: { searchParams?: { userId?: string } }) {
   const supabase = await createClient()
@@ -94,11 +95,14 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-lg font-bold">SITAS FITNESS</h1>
-              <p className="text-xs text-muted-foreground">Panel de Entrenador</p>
+        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-4">
+            <Logo size={80} />
+            <div className="hidden sm:block border-l pl-4 border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Panel de<br />Entrenador</p>
+            </div>
+            <div className="sm:hidden">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Entrenador</p>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">

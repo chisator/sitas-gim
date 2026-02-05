@@ -61,10 +61,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full items-center justify-center p-6 from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-md relative bottom-20">
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center gap-2 text-center">
+          <div className="flex flex-col items-center text-center">
             {/* Logo eliminado por rebranding */}
             {/* Logo principal */}
-            <Logo size={200} />
+            <Logo size={280} />
             {/*
             <div className="relative w-72 h-72 mr-2 top-20">
               <Image src="/logo.png" alt="SITAS FITNESS" fill className="object-contain" priority />

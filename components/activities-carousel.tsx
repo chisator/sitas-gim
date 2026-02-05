@@ -12,6 +12,7 @@ import {
     CarouselItem,
     CarouselNext,
     CarouselPrevious,
+    CarouselDots,
 } from "@/components/ui/carousel"
 import { Badge } from "@/components/ui/badge"
 import { Clock } from "lucide-react"
@@ -230,6 +231,7 @@ export function ActivitiesCarousel() {
                     <CarouselPrevious className="left-4 bg-white/20 border-0 text-white hover:bg-white/40" />
                     <CarouselNext className="right-4 bg-white/20 border-0 text-white hover:bg-white/40" />
                 </div>
+                <CarouselDots className="mt-6" />
             </Carousel>
         </div>
     )

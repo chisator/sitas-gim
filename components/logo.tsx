@@ -5,7 +5,7 @@ export function Logo({ size = 250 }: { size?: number }) {
         <svg
             width={size}
             height={size}
-            viewBox="0 0 400 400"
+            viewBox="30 30 340 340"
             xmlns="http://www.w3.org/2000/svg"
         >
             <defs>

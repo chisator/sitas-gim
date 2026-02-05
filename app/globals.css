@@ -127,5 +127,11 @@
     position: relative;
   }
 
+  /* Fix for date input icon in dark mode */
+  ::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+
   /* Logo de fondo eliminado */
 }
