@@ -2,11 +2,15 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { LogoutButton } from "@/components/logout-button"
 import { RoutineCard } from "@/components/routine-card"
 import Image from "next/image"
 import { ActivitiesCarousel } from "@/components/activities-carousel"
 import { Logo } from "@/components/logo"
+import { MobileMenu } from "@/components/mobile-menu"
+
 
 export default async function DeportistaPage() {
   const supabase = await createClient()
@@ -87,16 +91,19 @@ export default async function DeportistaPage() {
             <Logo size={80} />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden md:flex gap-4 mr-2">
+              <Button asChild variant="ghost">
+                <Link href="/deportista/registros">Registros</Link>
+              </Button>
+            </div>
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
               <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
                 Deportista
               </Badge>
             </div>
-            <div className="sm:hidden">
-              <LogoutButton iconOnly />
-            </div>
-            <div className="hidden sm:block">
+            <MobileMenu />
+            <div className="hidden md:block">
               <LogoutButton />
             </div>
           </div>

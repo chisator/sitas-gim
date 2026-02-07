@@ -9,6 +9,8 @@ import { AssignmentsTable } from "@/components/assignments-table"
 import { RoutinesTable } from "@/components/routines-table"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
+import { MobileMenu } from "@/components/mobile-menu"
+
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -76,10 +78,8 @@ export default async function AdminPage() {
                 Administrador
               </Badge>
             </div>
-            <div className="sm:hidden">
-              <LogoutButton iconOnly />
-            </div>
-            <div className="hidden sm:block">
+            <MobileMenu />
+            <div className="hidden md:block">
               <LogoutButton />
             </div>
           </div>
