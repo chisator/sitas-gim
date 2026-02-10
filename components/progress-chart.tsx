@@ -22,6 +22,19 @@ const formatNumber = (num: number) => {
 
 export function ProgressChart({ data, exerciseName }: ProgressChartProps) {
     const [metric, setMetric] = useState<"strength" | "volume">("strength")
+    const [timeRange, setTimeRange] = useState<"30d" | "1y" | "all">("all")
+
+    const filteredData = data?.filter(item => {
+        if (timeRange === "all") return true
+        const itemDate = new Date(item.date)
+        const now = new Date()
+        const diffTime = Math.abs(now.getTime() - itemDate.getTime())
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        if (timeRange === "30d") return diffDays <= 30
+        if (timeRange === "1y") return diffDays <= 365
+        return true
+    }) || []
 
     if (!data || data.length === 0) {
         return (
@@ -35,18 +48,27 @@ export function ProgressChart({ data, exerciseName }: ProgressChartProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base font-normal">Progreso: <span className="font-bold">{exerciseName}</span></CardTitle>
-                <Tabs value={metric} onValueChange={(v) => setMetric(v as "strength" | "volume")} className="w-[200px]">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="strength">Fuerza</TabsTrigger>
-                        <TabsTrigger value="volume">Volumen</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Tabs value={metric} onValueChange={(v) => setMetric(v as "strength" | "volume")} className="w-full sm:w-[200px]">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="strength">Fuerza</TabsTrigger>
+                            <TabsTrigger value="volume">Volumen</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as "30d" | "1y" | "all")} className="w-full sm:w-auto">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="30d">30 Días</TabsTrigger>
+                            <TabsTrigger value="1y">1 Año</TabsTrigger>
+                            <TabsTrigger value="all">Todo</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
             </CardHeader>
             <CardContent className="px-2 sm:px-6 pt-6">
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         {metric === "strength" ? (
-                            <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                            <LineChart data={filteredData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                 <XAxis
                                     dataKey="date"
@@ -60,7 +82,7 @@ export function ProgressChart({ data, exerciseName }: ProgressChartProps) {
                                     tickLine={false}
                                     axisLine={false}
                                     tickMargin={10}
-                                    style={{ fontSize: '12px', fontWeight: 'bold', fill: '#000000' }}
+                                    style={{ fontSize: '12px', fontWeight: 'bold' }}
                                     width={60}
                                     domain={['auto', 'auto']}
                                 />
@@ -112,7 +134,7 @@ export function ProgressChart({ data, exerciseName }: ProgressChartProps) {
                                 />
                             </LineChart>
                         ) : (
-                            <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                            <AreaChart data={filteredData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -132,7 +154,7 @@ export function ProgressChart({ data, exerciseName }: ProgressChartProps) {
                                     tickLine={false}
                                     axisLine={false}
                                     tickMargin={10}
-                                    style={{ fontSize: '12px', fontWeight: 'bold', fill: '#000000' }}
+                                    style={{ fontSize: '12px', fontWeight: 'bold' }}
                                     width={60}
                                     tickFormatter={formatNumber}
                                 />

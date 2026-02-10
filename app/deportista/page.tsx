@@ -86,16 +86,21 @@ export default async function DeportistaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
+        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2 relative">
           <div className="flex items-center gap-3">
             <Logo size={80} />
           </div>
+
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-4">
+            <Button asChild variant="ghost">
+              <Link href="/deportista/registros">Registros</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/deportista/progreso">Progreso</Link>
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden md:flex gap-4 mr-2">
-              <Button asChild variant="ghost">
-                <Link href="/deportista/registros">Registros</Link>
-              </Button>
-            </div>
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
               <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
