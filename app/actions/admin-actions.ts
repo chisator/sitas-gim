@@ -232,14 +232,61 @@ export async function deleteUser(userId: string) {
       },
     })
 
+    // Limpieza manual de dependencias para evitar errores de Foreign Key
+    console.log("[v0] Cleaning up user dependencies for:", userId)
+
+    // 1. Asignaciones (Como deportista o entrenador)
+    const { error: assignErr } = await supabaseAdmin.from("trainer_user_assignments").delete().or(`user_id.eq.${userId},trainer_id.eq.${userId}`)
+    if (assignErr) console.error("[v0] Error cleaning trainer user assignments:", assignErr)
+
+    // 2. Asignaciones de Rutinas (Como deportista)
+    const { error: rouAssignErr } = await supabaseAdmin.from("routine_user_assignments").delete().eq("user_id", userId)
+    if (rouAssignErr) console.error("[v0] Error cleaning routine user assignments:", rouAssignErr)
+
+    // 4. Clases aka Eventos (Si es instructor) - Desvincular para mantener historial
+    const { error: classErr } = await supabaseAdmin.from("gym_classes").update({ instructor_id: null }).eq("instructor_id", userId)
+    if (classErr) console.error("[v0] Error cleaning gym classes:", classErr)
+
+    // 5. Rutinas creadas (Si es entrenador)
+    // El trainer_id es NOT NULL, por lo que NO podemos desvincular (set null). Debemos BORRAR las rutinas.
+    // Antes de borrar rutinas, debemos borrar sus dependencias (workout_logs que referencian estas rutinas)
+
+    // a. Obtener IDs de rutinas de este entrenador
+    const { data: trainerRoutines } = await supabaseAdmin.from("routines").select("id").eq("trainer_id", userId)
+
+    if (trainerRoutines && trainerRoutines.length > 0) {
+      const routineIds = trainerRoutines.map(r => r.id)
+      console.log(`[v0] Deleting ${routineIds.length} routines owned by trainer`)
+
+      // b. Borrar logs vinculados a estas rutinas
+      const { error: logsRoutineErr } = await supabaseAdmin.from("workout_logs").delete().in("routine_id", routineIds)
+      if (logsRoutineErr) console.error("[v0] Error cleaning workout_logs for trainer routines:", logsRoutineErr)
+
+      // c. Borrar asignaciones de estas rutinas
+      const { error: assignRoutineErr } = await supabaseAdmin.from("routine_user_assignments").delete().in("routine_id", routineIds)
+      if (assignRoutineErr) console.error("[v0] Error cleaning routine_user_assignments for trainer routines:", assignRoutineErr)
+
+      // d. Finalmente borrar las rutinas
+      const { error: delRoutineErr } = await supabaseAdmin.from("routines").delete().in("id", routineIds)
+      if (delRoutineErr) console.error("[v0] Error deleting trainer routines:", delRoutineErr)
+    }
+
+    // 6. Logs de entrenamiento del propio usuario (Si es deportista)
+    const { error: logErr } = await supabaseAdmin.from("workout_logs").delete().eq("user_id", userId)
+    if (logErr) console.error("[v0] Error cleaning user workout logs:", logErr)
+
+    // 7. Eliminar perfil explícitamente
+    const { error: profErr } = await supabaseAdmin.from("profiles").delete().eq("id", userId)
+    if (profErr) console.error("[v0] Error cleaning profile:", profErr)
+
     // Eliminar usuario de auth
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
+      console.error("[v0] Error deleting auth user:", deleteError)
       return { error: deleteError.message }
     }
 
-    // El perfil se eliminará automáticamente por CASCADE
     revalidatePath("/admin")
     return { success: true }
   } catch (error: any) {

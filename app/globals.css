@@ -59,8 +59,8 @@
   --popover: oklch(0.02 0 0);
   --popover-foreground: oklch(0.98 0 0);
 
-  --primary: oklch(0.75 0.15 220);
-  /* Celeste vibrante */
+  --primary: #20fdee;
+  /* Celeste del logo */
   --primary-foreground: oklch(0 0 0);
   /* Negro sobre celeste */
 
@@ -86,10 +86,10 @@
   /* Gris oscuro */
   --input: oklch(0.2 0 0);
 
-  --ring: oklch(0.75 0.15 220);
+  --ring: #5ff2e8;
   /* Celeste para focus rings */
 
-  --chart-1: oklch(0.75 0.15 220);
+  --chart-1: #5ff2e8;
   /* Celeste */
   --chart-2: oklch(0.7 0.2 320);
   /* Rosa */
@@ -102,12 +102,12 @@
 
   --sidebar: oklch(0.02 0 0);
   --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.75 0.15 220);
+  --sidebar-primary: #5ff2e8;
   --sidebar-primary-foreground: oklch(0 0 0);
   --sidebar-accent: oklch(0.1 0 0);
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.75 0.15 220);
+  --sidebar-ring: #5ff2e8;
 }
 
 /* Bloque .dark eliminado ya que es el default ahora */

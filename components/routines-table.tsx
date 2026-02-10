@@ -8,6 +8,7 @@ import Link from "next/link"
 import { deleteRoutine } from "@/app/actions/trainer-actions"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 
 interface RoutinesTableProps {
@@ -23,10 +24,13 @@ export function RoutinesTable({ routines, trainers }: RoutinesTableProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [titleFilter, setTitleFilter] = useState("")
+  const [trainerFilter, setTrainerFilter] = useState("all")
 
-  const filteredRoutines = routines.filter((routine) =>
-    routine.title.toLowerCase().includes(titleFilter.toLowerCase())
-  )
+  const filteredRoutines = routines.filter((routine) => {
+    const matchesTitle = routine.title.toLowerCase().includes(titleFilter.toLowerCase())
+    const matchesTrainer = trainerFilter === "all" || routine.trainer_id === trainerFilter
+    return matchesTitle && matchesTrainer
+  })
 
   const handleDelete = async (routineId: string) => {
     if (!confirm("¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.")) {
@@ -74,6 +78,21 @@ export function RoutinesTable({ routines, trainers }: RoutinesTableProps) {
               <TableHead className="align-top pt-4">
                 <div className="flex flex-col gap-2 h-full justify-start">
                   <span className="font-bold py-1">Entrenador Asignado</span>
+                  <div className="pb-2">
+                    <Select value={trainerFilter} onValueChange={setTrainerFilter}>
+                      <SelectTrigger className="h-8 text-xs w-[180px]">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {trainers.map((trainer) => (
+                          <SelectItem key={trainer.id} value={trainer.id}>
+                            {trainer.full_name || "Sin Nombre"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </TableHead>
               <TableHead className="align-top pt-4">
