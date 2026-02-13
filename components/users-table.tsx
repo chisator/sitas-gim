@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 
 interface UsersTableProps {
   users: any[]
@@ -36,6 +36,7 @@ export function UsersTable({ users }: UsersTableProps) {
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<"deportista" | "entrenador" | "administrador">("deportista")
+  const [reservationCredits, setReservationCredits] = useState("0")
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
   const [nameFilter, setNameFilter] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
@@ -54,7 +55,6 @@ export function UsersTable({ users }: UsersTableProps) {
     let aValue = a[key]
     let bValue = b[key]
 
-    // Manejo especial para fechas si es necesario, aunque strings ISO funcionan bien
     if (key === "full_name") {
       aValue = aValue.toLowerCase()
       bValue = bValue.toLowerCase()
@@ -93,9 +93,15 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsLoading(true)
     setError(null)
 
-    // Validaciones
     if (!fullName.trim()) {
       setError("El nombre completo es requerido")
+      setIsLoading(false)
+      return
+    }
+
+    const credits = parseInt(reservationCredits)
+    if (isNaN(credits) || credits < 0) {
+      setError("Los créditos deben ser un número válido")
       setIsLoading(false)
       return
     }
@@ -123,6 +129,7 @@ export function UsersTable({ users }: UsersTableProps) {
       password,
       fullName,
       role,
+      reservationCredits: credits
     })
 
     if (result.error) {
@@ -131,12 +138,12 @@ export function UsersTable({ users }: UsersTableProps) {
       return
     }
 
-    // Limpiar y cerrar
     setIsOpen(false)
     setEmail("")
     setPassword("")
     setFullName("")
     setRole("deportista")
+    setReservationCredits("0")
     setError(null)
     setIsLoading(false)
   }
@@ -146,6 +153,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail(user.email)
     setFullName(user.full_name)
     setRole(user.role)
+    setReservationCredits(user.reservation_credits?.toString() || "0")
     setIsEditOpen(true)
   }
 
@@ -159,6 +167,7 @@ export function UsersTable({ users }: UsersTableProps) {
       email,
       fullName,
       role,
+      reservationCredits: parseInt(reservationCredits) || 0,
     })
 
     if (result.error) {
@@ -172,6 +181,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail("")
     setFullName("")
     setRole("deportista")
+    setReservationCredits("0")
     setIsLoading(false)
   }
 
@@ -217,11 +227,11 @@ export function UsersTable({ users }: UsersTableProps) {
           <Dialog open={isOpen} onOpenChange={(open) => {
             setIsOpen(open)
             if (!open) {
-              // Resetear cuando se cierra
               setEmail("")
               setPassword("")
               setFullName("")
               setRole("deportista")
+              setReservationCredits("0")
               setError(null)
             }
           }}>
@@ -282,6 +292,18 @@ export function UsersTable({ users }: UsersTableProps) {
                       <SelectItem value="administrador">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="credits">Créditos de Reserva</Label>
+                  <Input
+                    id="credits"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={reservationCredits}
+                    onChange={(e) => setReservationCredits(e.target.value)}
+                  />
                 </div>
 
                 {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -345,6 +367,11 @@ export function UsersTable({ users }: UsersTableProps) {
               </TableHead>
               <TableHead className="align-top pt-4">
                 <div className="flex flex-col gap-2">
+                  <span className="font-bold py-0.5">Créditos</span>
+                </div>
+              </TableHead>
+              <TableHead className="align-top pt-4">
+                <div className="flex flex-col gap-2">
                   <Button variant="ghost" onClick={() => requestSort("created_at")} className="hover:bg-transparent px-0 font-bold justify-start h-auto p-0">
                     Fecha de Registro
                     {getSortIcon("created_at")}
@@ -362,6 +389,7 @@ export function UsersTable({ users }: UsersTableProps) {
                 <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
+                <TableCell>{user.reservation_credits || 0}</TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString("es-ES")}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -425,6 +453,18 @@ export function UsersTable({ users }: UsersTableProps) {
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-credits">Créditos de Reserva</Label>
+                <Input
+                  id="edit-credits"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={reservationCredits}
+                  onChange={(e) => setReservationCredits(e.target.value)}
+                />
               </div>
 
               {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}

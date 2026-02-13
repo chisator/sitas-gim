@@ -1,10 +1,9 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { format, startOfWeek, endOfWeek, addDays } from "date-fns"
+import { format, startOfWeek, endOfWeek, addDays, isPast } from "date-fns"
 import { es } from "date-fns/locale"
 import {
     Carousel,
@@ -15,13 +14,17 @@ import {
     CarouselDots,
 } from "@/components/ui/carousel"
 import { Badge } from "@/components/ui/badge"
-import { Clock } from "lucide-react"
+import { Clock, Users } from "lucide-react"
+import { toast } from "sonner"
 
 type WeeklySchedule = {
     day: string
     time: string
     instructor: string
     isCancelled?: boolean
+    id: string
+    isReserved?: boolean
+    start_time: string
 }
 
 type ActivityType = {
@@ -43,6 +46,10 @@ export function ActivitiesCarousel() {
     const [activities, setActivities] = useState<ActivityType[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [weekRange, setWeekRange] = useState("")
+    const [userReservations, setUserReservations] = useState<string[]>([])
+    const [reservationCounts, setReservationCounts] = useState<Record<string, number>>({})
+    const [userCredits, setUserCredits] = useState(0)
+    const [userId, setUserId] = useState<string | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -53,15 +60,13 @@ export function ActivitiesCarousel() {
         setIsLoading(true)
         try {
             const now = new Date()
-            // If Sunday (0), we consider the "active week" to be the NEXT week starting tomorrow (Monday)
-            // If Mon-Sat, we consider the "active week" to be the CURRENT week (started last Monday)
             let targetDate = now
             if (now.getDay() === 0) {
                 targetDate = addDays(now, 1)
             }
 
-            const start = startOfWeek(targetDate, { weekStartsOn: 1 }) // Monday
-            const end = endOfWeek(targetDate, { weekStartsOn: 1 }) // Sunday
+            const start = startOfWeek(targetDate, { weekStartsOn: 1 })
+            const end = endOfWeek(targetDate, { weekStartsOn: 1 })
 
             setWeekRange(`Semana del ${format(start, "d 'de' MMMM", { locale: es })} `)
 
@@ -75,10 +80,11 @@ export function ActivitiesCarousel() {
             if (error) throw error
 
             const rawEvents = data || []
-
             const activitiesMap = new Map<string, ActivityType>()
+            const classIds: string[] = []
 
             rawEvents.forEach(event => {
+                classIds.push(event.id)
                 const title = event.title
                 const dateObj = new Date(event.start_time)
                 const dayName = format(dateObj, "EEEE", { locale: es }).toLowerCase()
@@ -97,7 +103,9 @@ export function ActivitiesCarousel() {
                         day: dayName,
                         time: timeStr,
                         instructor,
-                        isCancelled: event.is_cancelled
+                        isCancelled: event.is_cancelled,
+                        id: event.id,
+                        start_time: event.start_time
                     })
                 }
             })
@@ -113,12 +121,98 @@ export function ActivitiesCarousel() {
             })
 
             sortedActivities.sort((a, b) => a.title.localeCompare(b.title))
-
             setActivities(sortedActivities)
+
+            // Fetch reservation counts
+            if (classIds.length > 0) {
+                const { data: allReservations } = await supabase
+                    .from('reservations')
+                    .select('class_id')
+                    .in('class_id', classIds)
+
+                if (allReservations) {
+                    const counts: Record<string, number> = {}
+                    allReservations.forEach(r => {
+                        counts[r.class_id] = (counts[r.class_id] || 0) + 1
+                    })
+                    setReservationCounts(counts)
+                }
+            }
+
+            // Fetch user data for reservation status
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                setUserId(user.id)
+                const { data: profile } = await supabase.from('profiles').select('reservation_credits').eq('id', user.id).single()
+                if (profile) setUserCredits(profile.reservation_credits || 0)
+
+                const { data: reservations } = await supabase.from('reservations').select('class_id').eq('user_id', user.id)
+                if (reservations) setUserReservations(reservations.map(r => r.class_id))
+            }
+
         } catch (error) {
             console.error('Error fetching events:', error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const handleReserve = async (classId: string, activityTitle: string, classTime: string) => {
+        if (!userId) return
+
+        if (userCredits <= 0) {
+            toast.error("No tienes créditos suficientes", {
+                description: "Por favor, compra clases en administración.",
+            })
+            return
+        }
+
+        // Optimistic update
+        setUserReservations(prev => [...prev, classId])
+        setUserCredits(prev => prev - 1)
+        setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) + 1 }))
+
+        toast.success(`Clase de ${activityTitle} reservada`, {
+            description: `Te esperamos a las ${classTime} hs.`,
+        })
+
+        const { reserveClass } = await import('@/app/actions/reservation-actions')
+        const result = await reserveClass(classId, userId)
+
+        if (result.error) {
+            // Rollback
+            setUserReservations(prev => prev.filter(id => id !== classId))
+            setUserCredits(prev => prev + 1)
+            setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) - 1 }))
+            toast.error("Error al reservar", {
+                description: result.error,
+            })
+        }
+    }
+
+    const handleCancelReservation = async (classId: string, activityTitle: string, classTime: string) => {
+        if (!userId) return
+
+        if (!confirm("¿Deseas cancelar esta reserva?")) return
+
+        // Optimistic update
+        setUserReservations(prev => prev.filter(id => id !== classId))
+        setUserCredits(prev => prev + 1)
+        setReservationCounts(prev => ({ ...prev, [classId]: Math.max((prev[classId] || 0) - 1, 0) }))
+
+        toast.info("Reserva cancelada", {
+            description: `Has cancelado tu lugar en ${activityTitle} a las ${classTime}.`
+        })
+
+        const { cancelReservation } = await import('@/app/actions/reservation-actions')
+        const result = await cancelReservation(classId, userId)
+
+        if (result.error) {
+            // Rollback
+            setUserReservations(prev => [...prev, classId])
+            setUserCredits(prev => prev - 1)
+            setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) + 1 }))
+            toast.error("Error al cancelar", { description: result.error })
         }
     }
 
@@ -153,7 +247,6 @@ export function ActivitiesCarousel() {
                                                         "bg-gradient-to-br from-cyan-500 to-blue-600"
                                     } text-white`
                                 }>
-                                    {/* Abstract Pattern overlay */}
                                     <div className="absolute top-0 right-0 p-8 opacity-10 transform translate-x-1/2 -translate-y-1/2">
                                         <Clock className="w-48 h-48" />
                                     </div>
@@ -162,7 +255,6 @@ export function ActivitiesCarousel() {
                                         <CardTitle className="text-2xl font-bold tracking-tight text-white/95 truncate" title={activity.title}>
                                             {activity.title}
                                         </CardTitle>
-                                        {/* Alerta de suspensión */}
                                         {activity.schedules.some(s => s.isCancelled) && (
                                             <div className="flex flex-col gap-1 mt-1">
                                                 {activity.schedules.filter(s => s.isCancelled).map((s, i) => (
@@ -177,7 +269,6 @@ export function ActivitiesCarousel() {
                                     <CardContent className="relative z-10 flex-1 overflow-auto pt-2 scrollbar-none">
                                         <div className="space-y-3">
                                             {(() => {
-                                                // Group schedules by day
                                                 const groupedByDay = activity.schedules.reduce((acc, curr) => {
                                                     if (!acc[curr.day]) {
                                                         acc[curr.day] = []
@@ -186,7 +277,6 @@ export function ActivitiesCarousel() {
                                                     return acc
                                                 }, {} as Record<string, typeof activity.schedules>)
 
-                                                // Sort days based on predefined order
                                                 const sortedDays = Object.keys(groupedByDay).sort((a, b) => {
                                                     return (DAYS_ORDER[a as keyof typeof DAYS_ORDER] || 0) - (DAYS_ORDER[b as keyof typeof DAYS_ORDER] || 0)
                                                 })
@@ -200,21 +290,46 @@ export function ActivitiesCarousel() {
                                                                 </Badge>
                                                             </div>
                                                             <div className="flex flex-wrap gap-2 pl-1">
-                                                                {groupedByDay[day].sort((a, b) => a.time.localeCompare(b.time)).map((slot, sIdx) => (
-                                                                    <div
-                                                                        key={sIdx}
-                                                                        className={`flex items-center rounded px-2 py-0.5 text-xs transition-colors
+                                                                {groupedByDay[day].sort((a, b) => a.time.localeCompare(b.time)).map((slot, sIdx) => {
+                                                                    const isSlotPast = isPast(new Date(slot.start_time));
+                                                                    const count = reservationCounts[slot.id] || 0;
+
+                                                                    return (
+                                                                        <div
+                                                                            key={sIdx}
+                                                                            className={`flex items-center rounded px-2 py-0.5 text-xs transition-colors cursor-pointer relative group/slot
                                                                             ${slot.isCancelled
-                                                                                ? "bg-red-500/20 text-white/50 line-through decoration-white/40"
-                                                                                : "bg-white/10 text-white/90"
-                                                                            }`}
-                                                                        title={slot.isCancelled ? "Clase suspendida" : `Instructor: ${slot.instructor}`}
-                                                                    >
-                                                                        <Clock className={`w-3 h-3 mr-1 ${slot.isCancelled ? "opacity-40" : "opacity-70"}`} />
-                                                                        {slot.time}
-                                                                        {slot.isCancelled && <span className="no-underline ml-1 text-[10px] opacity-70">(Susp.)</span>}
-                                                                    </div>
-                                                                ))}
+                                                                                    ? "bg-red-500/20 text-white/50 line-through decoration-white/40 cursor-not-allowed"
+                                                                                    : isSlotPast
+                                                                                        ? "bg-gray-500/40 text-white/60 cursor-not-allowed"
+                                                                                        : userReservations.includes(slot.id)
+                                                                                            ? "bg-green-500 text-white hover:bg-green-600"
+                                                                                            : "bg-white/10 text-white/90 hover:bg-white/20"
+                                                                                }`}
+                                                                            title={slot.isCancelled ? "Clase suspendida" : isSlotPast ? "Clase finalizada" : userReservations.includes(slot.id) ? "Reservado (Click para cancelar)" : `Instructor: ${slot.instructor} - Click para reservar`}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                if (slot.isCancelled || isSlotPast) return
+                                                                                if (userReservations.includes(slot.id)) {
+                                                                                    handleCancelReservation(slot.id, activity.title, slot.time)
+                                                                                } else {
+                                                                                    handleReserve(slot.id, activity.title, slot.time)
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Clock className={`w-3 h-3 mr-1 ${slot.isCancelled || isSlotPast ? "opacity-40" : "opacity-70"}`} />
+                                                                            {slot.time}
+                                                                            {slot.isCancelled && <span className="no-underline ml-1 text-[10px] opacity-70">(Susp.)</span>}
+                                                                            {userReservations.includes(slot.id) && <span className="ml-1 text-[10px]">✓</span>}
+                                                                            {!slot.isCancelled && !isSlotPast && (
+                                                                                <span className="flex items-center ml-1.5 pl-1.5 border-l border-white/20 text-[10px] opacity-70">
+                                                                                    <Users className="w-2.5 h-2.5 mr-0.5" />
+                                                                                    {count}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -236,4 +351,3 @@ export function ActivitiesCarousel() {
         </div>
     )
 }
-

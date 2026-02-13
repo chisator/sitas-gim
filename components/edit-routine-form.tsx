@@ -305,10 +305,10 @@ export function EditRoutineForm({ routine, athletes, assignedUserIds = [], isAdm
                       </div>
 
                       <div className="grid gap-2">
-                        <Label htmlFor={`exercise-duration-${index}`}>Duración</Label>
+                        <Label htmlFor={`exercise-duration-${index}`}>Descanso / Pausa</Label>
                         <Input
                           id={`exercise-duration-${index}`}
-                          placeholder="Ej: 30 min"
+                          placeholder="Ej: 60 seg"
                           value={exercise.duration}
                           onChange={(e) => updateExercise(index, "duration", e.target.value)}
                         />
