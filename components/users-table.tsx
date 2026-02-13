@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react"
 
 interface UsersTableProps {
   users: any[]
@@ -34,9 +34,10 @@ export function UsersTable({ users }: UsersTableProps) {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<"deportista" | "entrenador" | "administrador">("deportista")
-  const [reservationCredits, setReservationCredits] = useState("0")
+  const [planCredits, setPlanCredits] = useState("0")
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
   const [nameFilter, setNameFilter] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
@@ -99,12 +100,7 @@ export function UsersTable({ users }: UsersTableProps) {
       return
     }
 
-    const credits = parseInt(reservationCredits)
-    if (isNaN(credits) || credits < 0) {
-      setError("Los créditos deben ser un número válido")
-      setIsLoading(false)
-      return
-    }
+    const credits = parseInt(planCredits) || 0
 
     if (!email.trim()) {
       setError("El email es requerido")
@@ -129,7 +125,8 @@ export function UsersTable({ users }: UsersTableProps) {
       password,
       fullName,
       role,
-      reservationCredits: credits
+      reservationCredits: credits,
+      planCredits: credits
     })
 
     if (result.error) {
@@ -143,7 +140,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setPassword("")
     setFullName("")
     setRole("deportista")
-    setReservationCredits("0")
+    setPlanCredits("0")
     setError(null)
     setIsLoading(false)
   }
@@ -153,7 +150,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail(user.email)
     setFullName(user.full_name)
     setRole(user.role)
-    setReservationCredits(user.reservation_credits?.toString() || "0")
+    setPlanCredits(user.plan_credits?.toString() || "0")
     setIsEditOpen(true)
   }
 
@@ -162,12 +159,22 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsLoading(true)
     setError(null)
 
+    const newPlanCredits = parseInt(planCredits) || 0
+    const oldPlanCredits = editingUser.plan_credits || 0
+    const currentReservationCredits = editingUser.reservation_credits || 0
+
+    // Calculate difference and apply to current balance
+    // Example: Plan 8 -> Used 1 -> Left 7. Change to 12. Diff +4. New Balance 11.
+    const creditDifference = newPlanCredits - oldPlanCredits
+    const newReservationCredits = Math.max(0, currentReservationCredits + creditDifference)
+
     const result = await updateUser({
       userId: editingUser.id,
       email,
       fullName,
       role,
-      reservationCredits: parseInt(reservationCredits) || 0,
+      reservationCredits: newReservationCredits,
+      planCredits: newPlanCredits
     })
 
     if (result.error) {
@@ -181,7 +188,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail("")
     setFullName("")
     setRole("deportista")
-    setReservationCredits("0")
+    setPlanCredits("0")
     setIsLoading(false)
   }
 
@@ -231,8 +238,9 @@ export function UsersTable({ users }: UsersTableProps) {
               setPassword("")
               setFullName("")
               setRole("deportista")
-              setReservationCredits("0")
+              setPlanCredits("0")
               setError(null)
+              setShowPassword(false)
             }
           }}>
             <DialogTrigger asChild>
@@ -269,15 +277,51 @@ export function UsersTable({ users }: UsersTableProps) {
 
                 <div className="grid gap-2">
                   <Label htmlFor="password">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="sr-only">
+                        {showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="plan">Plan Mensual (Renovación Automática)</Label>
+                  <Select value={planCredits} onValueChange={setPlanCredits}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sin Plan</SelectItem>
+                      <SelectItem value="4">4 Clases</SelectItem>
+                      <SelectItem value="8">8 Clases</SelectItem>
+                      <SelectItem value="12">12 Clases</SelectItem>
+                      <SelectItem value="50">Ilimitado (50 Clases)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid gap-2">
@@ -292,18 +336,6 @@ export function UsersTable({ users }: UsersTableProps) {
                       <SelectItem value="administrador">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="credits">Créditos de Reserva</Label>
-                  <Input
-                    id="credits"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={reservationCredits}
-                    onChange={(e) => setReservationCredits(e.target.value)}
-                  />
                 </div>
 
                 {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -442,6 +474,22 @@ export function UsersTable({ users }: UsersTableProps) {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="edit-plan">Plan Mensual (Renovación Automática)</Label>
+                <Select value={planCredits} onValueChange={setPlanCredits}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Sin Plan</SelectItem>
+                    <SelectItem value="4">4 Clases</SelectItem>
+                    <SelectItem value="8">8 Clases</SelectItem>
+                    <SelectItem value="12">12 Clases</SelectItem>
+                    <SelectItem value="9999">Ilimitado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="edit-role">Rol</Label>
                 <Select value={role} onValueChange={(value: any) => setRole(value)}>
                   <SelectTrigger>
@@ -453,18 +501,6 @@ export function UsersTable({ users }: UsersTableProps) {
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-credits">Créditos de Reserva</Label>
-                <Input
-                  id="edit-credits"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={reservationCredits}
-                  onChange={(e) => setReservationCredits(e.target.value)}
-                />
               </div>
 
               {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -481,6 +517,9 @@ export function UsersTable({ users }: UsersTableProps) {
           </DialogContent>
         </Dialog>
       </CardContent>
-    </Card>
+    </Card >
   )
 }
+
+
+

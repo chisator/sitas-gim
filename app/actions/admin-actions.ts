@@ -10,6 +10,7 @@ export async function createUser(formData: {
   fullName: string
   role: "deportista" | "entrenador" | "administrador"
   reservationCredits?: number
+  planCredits?: number
 }) {
   try {
     console.log("[v0] Starting user creation:", formData.email)
@@ -71,7 +72,8 @@ export async function createUser(formData: {
           email: formData.email,
           full_name: formData.fullName,
           role: formData.role,
-          reservation_credits: formData.reservationCredits || 0
+          reservation_credits: formData.reservationCredits || 0,
+          plan_credits: formData.planCredits || 0
         },
         { onConflict: "id" },
       )
@@ -165,6 +167,7 @@ export async function updateUser(formData: {
   fullName: string
   role: "deportista" | "entrenador" | "administrador"
   reservationCredits?: number
+  planCredits?: number
 }) {
   try {
     const supabase = await createServerClient()
@@ -203,7 +206,8 @@ export async function updateUser(formData: {
         email: formData.email,
         full_name: formData.fullName,
         role: formData.role,
-        reservation_credits: formData.reservationCredits
+        reservation_credits: formData.reservationCredits,
+        plan_credits: formData.planCredits || 0
       })
       .eq("id", formData.userId)
 

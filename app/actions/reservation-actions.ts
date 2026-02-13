@@ -3,14 +3,103 @@
 import { createClient } from "@/lib/server"
 import { revalidatePath } from "next/cache"
 
+// Helper to check and renew credits
+async function checkAndRenewCredits(userId: string, supabase: any) {
+    try {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('reservation_credits, plan_credits, expiring_credits, last_renewal_date, last_expiration_date')
+            .eq('id', userId)
+            .single()
+
+        if (error || !profile) return
+
+        const now = new Date()
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const currentMonthSixth = new Date(now.getFullYear(), now.getMonth(), 6)
+
+        let updates: any = {}
+        let newCredits = profile.reservation_credits
+        let newExpiring = profile.expiring_credits
+
+        // 1. Renewal Logic (1st of Month)
+        const lastRenewal = new Date(profile.last_renewal_date || '2000-01-01')
+        if (lastRenewal < currentMonthStart && profile.plan_credits > 0) {
+            // It's a new month, and we haven't renewed yet.
+            // Move current credits to expiring (if they fit logic, or just add new ones?)
+            // The requirement: "1st of month accredit X more. 6th of month expire old ones."
+
+            // Logic:
+            // Old credits becoming expiring? Or do we track them separately?
+            // Simplest interpretation:
+            // On 1st: Add Plan Credits.
+            // Note: We need to know which credits are "old".
+            // Let's say accurate way:
+            // On renewal, the *current* balance becomes "expiring candidates".
+            // But wait, if I have 4, get 4 more. Total 8.
+            // On 6th, I should lose the initial 4 (if unused).
+
+            // So:
+            // newly_expiring = current_balance
+            // new_balance = current_balance + plan_credits
+            // expiring_credits = newly_expiring
+
+            newExpiring = newCredits // All current credits are now "old"
+            newCredits = newCredits + profile.plan_credits
+
+            updates.last_renewal_date = now.toISOString()
+            updates.reservation_credits = newCredits
+            updates.expiring_credits = newExpiring
+        }
+
+        // 2. Expiration Logic (6th of Month)
+        const lastExpiration = new Date(profile.last_expiration_date || '2000-01-01')
+        // Only expire if we are past the 6th AND we haven't expirated for this month yet.
+        // AND the renewal for this month must have happened (implicit usually, but good to check).
+        if (now >= currentMonthSixth && lastExpiration < currentMonthStart && updates.expiring_credits === undefined) {
+            // We check updates.expiring_credits === undefined to ensure we don't expire immediately after renewal in the same transaction simulation
+            // although with lazy evaluation, this might happen sequentially.
+
+            // If we have expiring credits, remove them.
+            if (newExpiring > 0) {
+                // We need to deduct `newExpiring` from `newCredits`.
+                // But we might have used some! 
+                // Since standard usage prefers "expiring" credits first (FIFO), 
+                // `expiring_credits` should track *remaining* expiring credits.
+
+                // So, simply remove whatever is left in `expiring_credits`.
+                newCredits = Math.max(0, newCredits - newExpiring)
+                newExpiring = 0
+
+                updates.last_expiration_date = now.toISOString()
+                updates.reservation_credits = newCredits
+                updates.expiring_credits = 0
+            } else {
+                // Just update date if nothing to expire
+                updates.last_expiration_date = now.toISOString()
+            }
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await supabase.from('profiles').update(updates).eq('id', userId)
+        }
+
+    } catch (e) {
+        console.error("Error in auto-renewal:", e)
+    }
+}
+
 export async function reserveClass(classId: string, userId: string) {
     const supabase = await createClient()
 
     try {
+        // Run auto-renewal/expiration check first
+        await checkAndRenewCredits(userId, supabase)
+
         // 1. Get user profile and check credits
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('reservation_credits')
+            .select('reservation_credits, expiring_credits')
             .eq('id', userId)
             .single()
 
@@ -89,9 +178,19 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "Error al crear la reserva" }
         }
 
+        // Credit Deduction Logic: Use expiring first
+        let newCredits = profile.reservation_credits - 1
+        let newExpiring = profile.expiring_credits
+        if (newExpiring > 0) {
+            newExpiring = newExpiring - 1
+        }
+
         const { error: updateError } = await supabase
             .from('profiles')
-            .update({ reservation_credits: profile.reservation_credits - 1 })
+            .update({
+                reservation_credits: newCredits,
+                expiring_credits: newExpiring
+            })
             .eq('id', userId)
 
         if (updateError) {
@@ -113,6 +212,9 @@ export async function cancelReservation(classId: string, userId: string) {
     const supabase = await createClient()
 
     try {
+        // Run auto-renewal check
+        await checkAndRenewCredits(userId, supabase)
+
         // 1. Check if reservation exists
         const { data: existing, error: reservationError } = await supabase
             .from('reservations')
@@ -139,11 +241,18 @@ export async function cancelReservation(classId: string, userId: string) {
         // Get current credits to refund
         const { data: profile } = await supabase
             .from('profiles')
-            .select('reservation_credits')
+            .select('reservation_credits, expiring_credits')
             .eq('id', userId)
             .single()
 
         if (profile) {
+            // Refund logic: Add back to expiring if feasible? 
+            // Simplifying: Just add to general credits. 
+            // Ideally we'd know if the credit used was expiring, but that's complex state tracking.
+            // Assumption: Refunded credits become "fresh" (or at least non-expiring for simplicity in this MVP).
+            // OR consistent: Increase general credits. Only increase expiring if we are BEFORE the 6th? 
+            // Let's just increase `reservation_credits` to be safe and generous.
+
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ reservation_credits: profile.reservation_credits + 1 })
@@ -162,6 +271,10 @@ export async function cancelReservation(classId: string, userId: string) {
 
 export async function getUserReservations(userId: string) {
     const supabase = await createClient()
+
+    // Check renewal on read too, so UI is accurate
+    await checkAndRenewCredits(userId, supabase)
+
     const { data, error } = await supabase
         .from('reservations')
         .select('class_id')
