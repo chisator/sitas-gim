@@ -42,6 +42,24 @@ export default async function RegistrosPage() {
             .order("end_date", { ascending: false })
         : { data: [] }
 
+    // Filtrar rutinas por fecha
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const activeRoutines = routines?.filter((r) => {
+        const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
+        if (!routineEnd) return false
+        routineEnd.setHours(0, 0, 0, 0)
+        return routineEnd >= today
+    }) || []
+
+    const pastRoutines = routines?.filter((r) => {
+        const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
+        if (!routineEnd) return false
+        routineEnd.setHours(0, 0, 0, 0)
+        return routineEnd < today
+    }) || []
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
             <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -82,7 +100,7 @@ export default async function RegistrosPage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {routines?.map((routine) => (
+                    {activeRoutines.map((routine) => (
                         <Link key={routine.id} href={`/deportista/registros/${routine.id}`}>
                             <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-l-4 border-l-indigo-500">
                                 <CardHeader className="pb-2">
@@ -102,12 +120,35 @@ export default async function RegistrosPage() {
                         </Link>
                     ))}
 
-                    {(!routines || routines.length === 0) && (
-                        <div className="col-span-full text-center py-12 text-muted-foreground">
-                            No tienes rutinas asignadas para registrar.
+                    {activeRoutines.length === 0 && (
+                        <div className="col-span-full text-center py-8 text-muted-foreground">
+                            No tienes rutinas activas para registrar.
                         </div>
                     )}
                 </div>
+
+                {pastRoutines.length > 0 && (
+                    <div className="mt-12">
+                        <h2 className="text-2xl font-bold mb-6">Rutinas Finalizadas</h2>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {pastRoutines.map((routine) => (
+                                <Card key={routine.id} className="h-full opacity-60 bg-muted/30 border-l-4 border-l-gray-400">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-muted-foreground">
+                                            {routine.title}
+                                        </CardTitle>
+                                        <CardDescription className="line-clamp-2">{routine.description}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center text-sm text-muted-foreground mt-2">
+                                            <span>Rutina finalizada - Detalles ocultos</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     )

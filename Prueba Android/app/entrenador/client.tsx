@@ -1,0 +1,292 @@
+"use client"
+
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { createClient } from "@/lib/client"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { LogoutButton } from "@/components/logout-button"
+import { TrainerRoutineCard } from "@/components/trainer-routine-card"
+import { TrainerUserFilter } from "@/components/trainer-user-filter"
+import { Logo } from "@/components/logo"
+import { MobileMenu } from "@/components/mobile-menu"
+
+function EntrenadorDashboardContent() {
+    const [user, setUser] = useState<any>(null)
+    const [profile, setProfile] = useState<any>(null)
+    const [athletes, setAthletes] = useState<any[]>([])
+    const [routines, setRoutines] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const filterUserId = searchParams.get("userId")
+    const supabase = createClient()
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (!user) {
+                router.replace("/auth/login")
+                return
+            }
+
+            const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+
+            if (profile?.role !== "entrenador") {
+                router.replace("/unauthorized")
+                return
+            }
+
+            setUser(user)
+            setProfile(profile)
+
+            // Get assigned users
+            const { data: assignments } = await supabase
+                .from("trainer_user_assignments")
+                .select("user_id")
+                .eq("trainer_id", user.id)
+                .order("created_at", { ascending: false })
+
+            const userIds = assignments?.map((a) => a.user_id) || []
+
+            // Get athletes profiles
+            if (userIds.length > 0) {
+                const { data: athletesData } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .in("id", userIds)
+                    .order("full_name")
+                setAthletes(athletesData || [])
+            } else {
+                setAthletes([])
+            }
+
+            // Get routines
+            let routinesData = [] as any[]
+
+            if (filterUserId) {
+                // If filtering by user, we need routines assigned to that user AND created by this trainer (or just assigned to them?)
+                // The original logic was: get routine_user_assignments for that user, then get routines from that list checking trainer_id.
+                const { data: routineAssignments } = await supabase
+                    .from("routine_user_assignments")
+                    .select("routine_id")
+                    .eq("user_id", filterUserId)
+                    .order("created_at", { ascending: false })
+
+                const routineIds = (routineAssignments || []).map((r: any) => r.routine_id)
+
+                if (routineIds.length > 0) {
+                    const { data } = await supabase
+                        .from("routines")
+                        .select("*")
+                        .in("id", routineIds)
+                        .eq("trainer_id", user.id)
+                        .order("end_date", { ascending: false })
+                    routinesData = data || []
+                }
+            } else {
+                // Get all routines by this trainer
+                const { data } = await supabase
+                    .from("routines")
+                    .select("*")
+                    .eq("trainer_id", user.id)
+                    .order("end_date", { ascending: false })
+                routinesData = data || []
+            }
+
+            setRoutines(routinesData)
+            setLoading(false)
+        }
+
+        fetchData()
+    }, [router, supabase, filterUserId])
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+        )
+    }
+
+    // Calculate stats
+    const totalRoutines = routines.length
+    const totalAssignedUsers = athletes.length
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const upcomingRoutines = routines.filter((r) => {
+        const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
+        if (!routineEnd) return false
+        routineEnd.setHours(0, 0, 0, 0)
+        return routineEnd >= today
+    })
+
+    const pastRoutines = routines.filter((r) => {
+        const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
+        if (!routineEnd) return false
+        routineEnd.setHours(0, 0, 0, 0)
+        return routineEnd < today
+    })
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
+            <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
+                    <div className="flex items-center gap-4">
+                        <Logo size={80} />
+                        <div className="hidden sm:block border-l pl-4 border-border/50">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Panel de<br />Entrenador</p>
+                        </div>
+                        <div className="sm:hidden">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Entrenador</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="text-right">
+                            <p className="text-sm font-medium">{profile?.full_name}</p>
+                            <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-emerald-100 text-emerald-800 dark:bg-emerald-900">
+                                Entrenador
+                            </Badge>
+                        </div>
+                        <MobileMenu />
+                        <div className="hidden md:block">
+                            <LogoutButton />
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main className="container mx-auto px-4 py-8">
+                <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-3xl font-bold text-balance">Bienvenido, {profile?.full_name}</h2>
+                        <p className="text-muted-foreground mt-1">Gestiona tus rutinas de entrenamiento</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild size="lg" className="text-xs sm:text-base">
+                            <Link href="/entrenador/crear-rutina">
+                                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Nueva Rutina
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="mb-6">
+                    <TrainerUserFilter athletes={athletes} />
+                </div>
+
+                <div className="grid gap-2 grid-cols-2 md:grid-cols-3 mb-8">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+                            <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Total Rutinas</CardTitle>
+                            <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                        </CardHeader>
+                        <CardContent className="p-2 pt-0">
+                            <div className="text-lg sm:text-xl font-bold">{totalRoutines}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+                            <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Próximas</CardTitle>
+                            <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                            </svg>
+                        </CardHeader>
+                        <CardContent className="p-2 pt-0">
+                            <div className="text-lg sm:text-xl font-bold">{upcomingRoutines.length}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
+                            <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Asignados</CardTitle>
+                            <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20a9 9 0 0118 0v-2a9 9 0 00-18 0v2z"
+                                />
+                            </svg>
+                        </CardHeader>
+                        <CardContent className="p-2 pt-0">
+                            <div className="text-lg sm:text-xl font-bold">{totalAssignedUsers}</div>
+                            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Usuarios asignados</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-8">
+                    <div>
+                        <h3 className="text-2xl font-bold mb-4">Próximas Rutinas</h3>
+                        {upcomingRoutines.length > 0 ? (
+                            <div className="grid gap-4 md:grid-cols-2 items-start">
+                                {upcomingRoutines.map((routine: any, index: number) => (
+                                    <TrainerRoutineCard key={routine.id} routine={routine} index={index} />
+                                ))}
+                            </div>
+                        ) : (
+                            <Card>
+                                <CardContent className="py-8 text-center">
+                                    <p className="text-muted-foreground mb-4">No tienes rutinas próximas programadas</p>
+                                    <Button asChild>
+                                        <Link href="/entrenador/crear-rutina">Crear Primera Rutina</Link>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    <div>
+                        <h3 className="text-2xl font-bold mb-4">Rutinas Anteriores</h3>
+                        {pastRoutines.length > 0 ? (
+                            <div className="grid gap-4 md:grid-cols-2 items-start">
+                                {pastRoutines.slice(0, 4).map((routine: any, index: number) => (
+                                    <TrainerRoutineCard key={routine.id} routine={routine} isPast index={index} />
+                                ))}
+                            </div>
+                        ) : (
+                            <Card>
+                                <CardContent className="py-8 text-center">
+                                    <p className="text-muted-foreground">No tienes rutinas anteriores</p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    )
+}
+
+export default function EntrenadorDashboard() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+        }>
+            <EntrenadorDashboardContent />
+        </Suspense>
+    )
+}

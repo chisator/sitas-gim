@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SitasGim</string>
+    <string name="title_activity_main">SitasGim</string>
+    <string name="package_name">com.sitas.gim</string>
+    <string name="custom_url_scheme">com.sitas.gim</string>
+</resources>

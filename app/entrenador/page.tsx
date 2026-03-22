@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/server"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,12 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
     redirect("/unauthorized")
   }
 
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+
   // Obtener asignaciones entrenador-usuario
   const { data: assignments } = await supabase
     .from("trainer_user_assignments")
@@ -35,17 +42,19 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
     .eq("trainer_id", user.id)
     .order("created_at", { ascending: false })
 
-  const userIds = assignments?.map((a) => a.user_id) || []
+  const assignedUserIds = assignments?.map((a) => a.user_id) || []
 
-  // Obtener perfiles de esos usuarios para el filtro
-  const { data: athletes } = userIds.length
-    ? await supabase.from("profiles").select("*").in("id", userIds).order("full_name")
-    : { data: [] }
+  // Obtener TODOS los perfiles de deportistas para que el entrenador pueda ver/filtrar a cualquiera
+  const { data: athletes } = await supabaseAdmin
+    .from("profiles")
+    .select("*")
+    .eq("role", "deportista")
+    .order("full_name")
 
-  // Si hay filtro por usuario en querystring, obtener sólo las rutinas asignadas a ese usuario
+  // Si hay filtro por usuario en querystring, obtener TODAS las rutinas asignadas a ese usuario sin filtrar por creador
   let routines = [] as any[]
   if (searchParams?.userId) {
-    const { data: routineAssignments } = await supabase
+    const { data: routineAssignments } = await supabaseAdmin
       .from("routine_user_assignments")
       .select("routine_id")
       .eq("user_id", searchParams.userId)
@@ -53,28 +62,53 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
 
     const routineIds = (routineAssignments || []).map((r: any) => r.routine_id)
     if (routineIds.length > 0) {
-      const { data } = await supabase
+      const { data } = await supabaseAdmin
         .from("routines")
         .select("*")
         .in("id", routineIds)
-        .eq("trainer_id", user.id)
         .order("end_date", { ascending: false })
       routines = data || []
     } else {
       routines = []
     }
   } else {
-    const { data } = await supabase
-      .from("routines")
-      .select("*")
-      .eq("trainer_id", user.id)
-      .order("end_date", { ascending: false })
+    // Si no hay filtro, mostrar todas las rutinas asignadas a sus alumnos asignados OR creadas por este entrenador
+    const { data: assignedRoutinesQuery } = assignedUserIds.length > 0 
+      ? await supabaseAdmin.from("routine_user_assignments").select("routine_id").in("user_id", assignedUserIds) 
+      : { data: [] }
+    const routineIds = (assignedRoutinesQuery || []).map((r: any) => r.routine_id)
+    
+    let query = supabaseAdmin.from("routines").select("*").order("end_date", { ascending: false })
+    
+    if (routineIds.length > 0) {
+      query = query.or(`id.in.(${routineIds.join(',')}),trainer_id.eq.${user.id}`)
+    } else {
+      query = query.eq("trainer_id", user.id)
+    }
+    const { data } = await query
     routines = data || []
+  }
+
+  // Anexar información de los creadores y los últimos editores a cada rutina
+  const trainerIds = new Set<string>()
+  routines.forEach(r => {
+    if (r.trainer_id) trainerIds.add(r.trainer_id)
+    if (r.updated_by) trainerIds.add(r.updated_by)
+  })
+  
+  if (trainerIds.size > 0) {
+    const { data: trainersInfo } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", Array.from(trainerIds))
+    const trainerMap = new Map((trainersInfo || []).map(t => [t.id, t.full_name]))
+    routines = routines.map(r => ({
+      ...r,
+      creator_name: trainerMap.get(r.trainer_id) || "Sin Creador",
+      updater_name: r.updated_by ? trainerMap.get(r.updated_by) : null
+    }))
   }
 
   // Calcular estadísticas
   const totalRoutines = routines?.length || 0
-  const totalAssignedUsers = userIds.length || 0
+  const totalAssignedUsers = assignedUserIds.length || 0
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -97,7 +131,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
+        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2 relative">
           <div className="flex items-center gap-4">
             <Logo size={80} />
             <div className="hidden sm:block border-l pl-4 border-border/50">
@@ -107,6 +141,15 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Entrenador</p>
             </div>
           </div>
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-4">
+            <Button asChild variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Link href="/admin/ejercicios">Ejercicios</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Link href="/admin/eventos">Eventos</Link>
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
@@ -114,7 +157,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
                 Entrenador
               </Badge>
             </div>
-            <MobileMenu />
+            <MobileMenu role="entrenador" />
             <div className="hidden md:block">
               <LogoutButton />
             </div>

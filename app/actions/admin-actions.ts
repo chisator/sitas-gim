@@ -9,8 +9,7 @@ export async function createUser(formData: {
   password: string
   fullName: string
   role: "deportista" | "entrenador" | "administrador"
-  reservationCredits?: number
-  planCredits?: number
+  activityCredits?: Record<string, number>
 }) {
   try {
     console.log("[v0] Starting user creation:", formData.email)
@@ -72,8 +71,7 @@ export async function createUser(formData: {
           email: formData.email,
           full_name: formData.fullName,
           role: formData.role,
-          reservation_credits: formData.reservationCredits || 0,
-          plan_credits: formData.planCredits || 0
+          activity_credits: formData.activityCredits || {}
         },
         { onConflict: "id" },
       )
@@ -166,8 +164,7 @@ export async function updateUser(formData: {
   email: string
   fullName: string
   role: "deportista" | "entrenador" | "administrador"
-  reservationCredits?: number
-  planCredits?: number
+  activityCredits?: Record<string, number>
 }) {
   try {
     const supabase = await createServerClient()
@@ -206,8 +203,7 @@ export async function updateUser(formData: {
         email: formData.email,
         full_name: formData.fullName,
         role: formData.role,
-        reservation_credits: formData.reservationCredits,
-        plan_credits: formData.planCredits || 0
+        activity_credits: formData.activityCredits || {}
       })
       .eq("id", formData.userId)
 
@@ -393,5 +389,96 @@ export async function deleteExerciseCatalogItem(id: string) {
     return { success: true }
   } catch (error: any) {
     return { error: error.message || "Error al eliminar ejercicio" }
+  }
+}
+
+// --- GESTIÓN DE EVENTOS Y ASISTENTES ---
+
+export async function getAdminEvents() {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || (user.user_metadata?.role !== "administrador" && user.user_metadata?.role !== "entrenador")) {
+      return { error: "No tienes permisos" }
+    }
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+
+    const { data, error } = await supabaseAdmin
+      .from('gym_classes')
+      .select('*, profiles(full_name), reservations(id)')
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { success: true, events: data || [] }
+  } catch (error: any) {
+    return { error: error.message || "Error al obtener eventos" }
+  }
+}
+
+export async function getAttendees(classId: string) {
+  try {
+    console.log("getAttendees called for classId:", classId)
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || (user.user_metadata?.role !== "administrador" && user.user_metadata?.role !== "entrenador")) {
+      console.log("getAttendees failed: not an admin or no user")
+      return { error: "No tienes permisos" }
+    }
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+
+    const { data: reservations, error } = await supabaseAdmin
+      .from('reservations')
+      .select('id, user_id')
+      .eq('class_id', classId)
+
+    if (error) {
+      console.log("getAttendees failed with error:", error)
+      return { error: error.message }
+    }
+
+    if (!reservations || reservations.length === 0) {
+      return { success: true, attendees: [] }
+    }
+
+    const userIds = reservations.map(r => r.user_id)
+
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds)
+
+    if (profilesError) {
+      console.log("getAttendees failed fetching profiles:", profilesError)
+      return { error: profilesError.message }
+    }
+
+    const attendees = reservations.map(r => ({
+      id: r.id,
+      user_id: r.user_id,
+      profiles: profiles?.find(p => p.id === r.user_id) || null
+    }))
+
+    console.log("getAttendees success. Data:", attendees)
+    return { success: true, attendees }
+  } catch (error: any) {
+    console.log("getAttendees caught error:", error)
+    return { error: error.message || "Error al obtener asistentes" }
   }
 }

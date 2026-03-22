@@ -274,6 +274,15 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
             </CollapsibleContent>
           </Collapsible>
         </div>
+
+        {routine.creator_name && (
+          <div className="mt-4 pt-3 border-t border-border/50 text-[11px] sm:text-xs text-muted-foreground flex flex-col gap-1">
+            <p>Creada por: <span className="font-medium text-foreground">{routine.creator_name}</span></p>
+            {routine.updater_name && (
+              <p>Última edición: <span className="font-medium text-foreground">{routine.updater_name}</span> {routine.updated_at ? `(${formatDate(routine.updated_at)})` : ""}</p>
+            )}
+          </div>
+        )}
       </CardContent>
 
       <RenewRoutineDialog

@@ -107,7 +107,7 @@ export default async function DeportistaPage() {
                 Deportista
               </Badge>
             </div>
-            <MobileMenu />
+            <MobileMenu role="deportista" />
             <div className="hidden md:block">
               <LogoutButton />
             </div>

@@ -8,7 +8,7 @@ async function checkAndRenewCredits(userId: string, supabase: any) {
     try {
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('reservation_credits, plan_credits, expiring_credits, last_renewal_date, last_expiration_date')
+            .select('activity_credits, expiring_activity_credits, last_renewal_date, last_expiration_date')
             .eq('id', userId)
             .single()
 
@@ -19,65 +19,29 @@ async function checkAndRenewCredits(userId: string, supabase: any) {
         const currentMonthSixth = new Date(now.getFullYear(), now.getMonth(), 6)
 
         let updates: any = {}
-        let newCredits = profile.reservation_credits
-        let newExpiring = profile.expiring_credits
+        let currentCredits = profile.activity_credits || {}
+        let expiringCredits = profile.expiring_activity_credits || {}
 
-        // 1. Renewal Logic (1st of Month)
+        // 1. Renewal Logic (1st of Month) -> Move tickets to Expiring
         const lastRenewal = new Date(profile.last_renewal_date || '2000-01-01')
-        if (lastRenewal < currentMonthStart && profile.plan_credits > 0) {
-            // It's a new month, and we haven't renewed yet.
-            // Move current credits to expiring (if they fit logic, or just add new ones?)
-            // The requirement: "1st of month accredit X more. 6th of month expire old ones."
-
-            // Logic:
-            // Old credits becoming expiring? Or do we track them separately?
-            // Simplest interpretation:
-            // On 1st: Add Plan Credits.
-            // Note: We need to know which credits are "old".
-            // Let's say accurate way:
-            // On renewal, the *current* balance becomes "expiring candidates".
-            // But wait, if I have 4, get 4 more. Total 8.
-            // On 6th, I should lose the initial 4 (if unused).
-
-            // So:
-            // newly_expiring = current_balance
-            // new_balance = current_balance + plan_credits
-            // expiring_credits = newly_expiring
-
-            newExpiring = newCredits // All current credits are now "old"
-            newCredits = newCredits + profile.plan_credits
+        if (lastRenewal < currentMonthStart) {
+            // El día 1, todo pasa al bolsillo de "por vencer" y el principal queda en 0.
+            expiringCredits = { ...currentCredits }
+            currentCredits = {}
 
             updates.last_renewal_date = now.toISOString()
-            updates.reservation_credits = newCredits
-            updates.expiring_credits = newExpiring
+            updates.activity_credits = currentCredits
+            updates.expiring_activity_credits = expiringCredits
         }
 
-        // 2. Expiration Logic (6th of Month)
+        // 2. Expiration Logic (6th of Month) -> Wipe out Expiring
         const lastExpiration = new Date(profile.last_expiration_date || '2000-01-01')
-        // Only expire if we are past the 6th AND we haven't expirated for this month yet.
-        // AND the renewal for this month must have happened (implicit usually, but good to check).
-        if (now >= currentMonthSixth && lastExpiration < currentMonthStart && updates.expiring_credits === undefined) {
-            // We check updates.expiring_credits === undefined to ensure we don't expire immediately after renewal in the same transaction simulation
-            // although with lazy evaluation, this might happen sequentially.
-
-            // If we have expiring credits, remove them.
-            if (newExpiring > 0) {
-                // We need to deduct `newExpiring` from `newCredits`.
-                // But we might have used some! 
-                // Since standard usage prefers "expiring" credits first (FIFO), 
-                // `expiring_credits` should track *remaining* expiring credits.
-
-                // So, simply remove whatever is left in `expiring_credits`.
-                newCredits = Math.max(0, newCredits - newExpiring)
-                newExpiring = 0
-
-                updates.last_expiration_date = now.toISOString()
-                updates.reservation_credits = newCredits
-                updates.expiring_credits = 0
-            } else {
-                // Just update date if nothing to expire
-                updates.last_expiration_date = now.toISOString()
-            }
+        // Si ya pasamos el 6, y la última expiración fue ANTES del inicio de mes...
+        if (now >= currentMonthSixth && lastExpiration < currentMonthStart && updates.expiring_activity_credits === undefined) {
+            
+            expiringCredits = {}
+            updates.last_expiration_date = now.toISOString()
+            updates.expiring_activity_credits = expiringCredits
         }
 
         if (Object.keys(updates).length > 0) {
@@ -99,7 +63,7 @@ export async function reserveClass(classId: string, userId: string) {
         // 1. Get user profile and check credits
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('reservation_credits, expiring_credits')
+            .select('activity_credits, expiring_activity_credits')
             .eq('id', userId)
             .single()
 
@@ -107,19 +71,27 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "Usuario no encontrado" }
         }
 
-        if (profile.reservation_credits < 1) {
-            return { error: "No tienes créditos suficientes para reservar" }
-        }
-
-        // 2. Get class details to check date and past status
+        // 2. Get class details to check title, date and past status
         const { data: classData, error: classError } = await supabase
             .from('gym_classes')
-            .select('start_time')
+            .select('title, start_time, capacity')
             .eq('id', classId)
             .single()
 
         if (classError || !classData) {
             return { error: "Clase no encontrada" }
+        }
+
+        // Validate tickets for this specific class BEFORE moving forward
+        const activityTitle = classData.title;
+        let currentCredits = profile.activity_credits || {};
+        let expiringCredits = profile.expiring_activity_credits || {};
+        
+        let c = currentCredits[activityTitle] || 0;
+        let e = expiringCredits[activityTitle] || 0;
+
+        if (c <= 0 && e <= 0) {
+            return { error: `No tienes tickets suficientes para ${activityTitle}` }
         }
 
         const classDate = new Date(classData.start_time)
@@ -129,7 +101,23 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "No puedes reservar una clase que ya ha pasado" }
         }
 
-        // 3. Check existing reservation
+        // 3. Check Capacity
+        const capacity = classData.capacity || 20 // Default fallback
+
+        const { count: enrolledCount, error: enrollError } = await supabase
+            .from('reservations')
+            .select('*', { count: 'exact', head: true })
+            .eq('class_id', classId)
+
+        if (enrollError) {
+            return { error: "Error al verificar cupos de la clase" }
+        }
+
+        if (enrolledCount !== null && enrolledCount >= capacity) {
+            return { error: "La clase ya está llena. No quedan cupos disponibles." }
+        }
+
+        // 4. Check existing reservation
         const { data: existing } = await supabase
             .from('reservations')
             .select('id')
@@ -179,24 +167,24 @@ export async function reserveClass(classId: string, userId: string) {
         }
 
         // Credit Deduction Logic: Use expiring first
-        let newCredits = profile.reservation_credits - 1
-        let newExpiring = profile.expiring_credits
-        if (newExpiring > 0) {
-            newExpiring = newExpiring - 1
+        if (e > 0) {
+            expiringCredits[activityTitle] = e - 1;
+        } else {
+            currentCredits[activityTitle] = c - 1;
         }
 
         const { error: updateError } = await supabase
             .from('profiles')
             .update({
-                reservation_credits: newCredits,
-                expiring_credits: newExpiring
+                activity_credits: currentCredits,
+                expiring_activity_credits: expiringCredits
             })
             .eq('id', userId)
 
         if (updateError) {
             // Rollback reservation if credit update fails
             await supabase.from('reservations').delete().eq('user_id', userId).eq('class_id', classId)
-            return { error: "Error al actualizar créditos" }
+            return { error: "Error al descontar el ticket del perfil" }
         }
 
         revalidatePath('/deportista')
@@ -238,24 +226,27 @@ export async function cancelReservation(classId: string, userId: string) {
             return { error: "Error al cancelar la reserva" }
         }
 
-        // Get current credits to refund
+        // Refund logic: Add back to current activity_credits
         const { data: profile } = await supabase
             .from('profiles')
-            .select('reservation_credits, expiring_credits')
+            .select('activity_credits')
             .eq('id', userId)
             .single()
+            
+        const { data: classData } = await supabase
+            .from('gym_classes')
+            .select('title')
+            .eq('id', classId)
+            .single()
 
-        if (profile) {
-            // Refund logic: Add back to expiring if feasible? 
-            // Simplifying: Just add to general credits. 
-            // Ideally we'd know if the credit used was expiring, but that's complex state tracking.
-            // Assumption: Refunded credits become "fresh" (or at least non-expiring for simplicity in this MVP).
-            // OR consistent: Increase general credits. Only increase expiring if we are BEFORE the 6th? 
-            // Let's just increase `reservation_credits` to be safe and generous.
+        if (profile && classData) {
+            const currentCredits = profile.activity_credits || {};
+            const title = classData.title;
+            currentCredits[title] = (currentCredits[title] || 0) + 1;
 
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({ reservation_credits: profile.reservation_credits + 1 })
+                .update({ activity_credits: currentCredits })
                 .eq('id', userId)
         }
 

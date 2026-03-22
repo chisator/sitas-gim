@@ -2,11 +2,13 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { LogoutButton } from "@/components/logout-button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersTable } from "@/components/users-table"
 import { AssignmentsTable } from "@/components/assignments-table"
 import { RoutinesTable } from "@/components/routines-table"
+import { TrainerRoutinesStats } from "@/components/trainer-routines-stats"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 import { MobileMenu } from "@/components/mobile-menu"
@@ -50,7 +52,10 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false })
 
   // Obtener todas las rutinas
-  const { data: routines } = await supabase.from("routines").select("*")
+  const { data: routines } = await supabase.from("routines").select(`
+    *,
+    routine_user_assignments(user_id)
+  `)
 
   // Calcular estadísticas
   const totalUsers = users?.length || 0
@@ -61,7 +66,7 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 dark:from-gray-900 dark:to-gray-800">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
+        <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2 relative">
           <div className="flex items-center gap-4">
             <Logo size={80} />
             <div className="hidden sm:block border-l pl-4 border-border/50">
@@ -71,6 +76,15 @@ export default async function AdminPage() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Admin</p>
             </div>
           </div>
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-4">
+            <Button asChild variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Link href="/admin/ejercicios">Ejercicios</Link>
+            </Button>
+            <Button asChild variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Link href="/admin/eventos">Eventos</Link>
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
@@ -78,7 +92,7 @@ export default async function AdminPage() {
                 Administrador
               </Badge>
             </div>
-            <MobileMenu />
+            <MobileMenu role="administrador" />
             <div className="hidden md:block">
               <LogoutButton />
             </div>
@@ -92,7 +106,7 @@ export default async function AdminPage() {
           <p className="text-muted-foreground mt-1">Gestiona usuarios, rutinas y asignaciones del gimnasio</p>
         </div>
 
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-5 mb-8">
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
               <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Total Usuarios</CardTitle>
@@ -178,50 +192,14 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
 
-          <Link href="/admin/eventos">
-            <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
-                <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Clases/Eventos</CardTitle>
-                <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </CardHeader>
-              <CardContent className="p-2 pt-0">
-                <div className="flex items-center text-[10px] sm:text-xs text-muted-foreground">
-                  Gestionar agenda
-                  <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/ejercicios">
-            <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
-                <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Catálogo Ejer.</CardTitle>
-                <svg className="h-3 w-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </CardHeader>
-              <CardContent className="p-2 pt-0">
-                <div className="flex items-center text-[10px] sm:text-xs text-muted-foreground">
-                  Gestionar biblioteca
-                  <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="users">Usuarios</TabsTrigger>
-            <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
-            <TabsTrigger value="routines">Rutinas</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 gap-1">
+            <TabsTrigger value="users" className="py-2">Usuarios</TabsTrigger>
+            <TabsTrigger value="assignments" className="py-2">Asignaciones</TabsTrigger>
+            <TabsTrigger value="routines" className="py-2">Rutinas</TabsTrigger>
+            <TabsTrigger value="stats" className="py-2">Estadísticas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -234,6 +212,10 @@ export default async function AdminPage() {
 
           <TabsContent value="routines">
             <RoutinesTable routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} />
+          </TabsContent>
+
+          <TabsContent value="stats">
+            <TrainerRoutinesStats routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} />
           </TabsContent>
         </Tabs>
       </main>

@@ -48,13 +48,22 @@ export function ActivitiesCarousel() {
     const [weekRange, setWeekRange] = useState("")
     const [userReservations, setUserReservations] = useState<string[]>([])
     const [reservationCounts, setReservationCounts] = useState<Record<string, number>>({})
-    const [userCredits, setUserCredits] = useState(0)
+    const [activityCredits, setActivityCredits] = useState<Record<string, number>>({})
+    const [expiringCredits, setExpiringCredits] = useState<Record<string, number>>({})
     const [userId, setUserId] = useState<string | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
         fetchEvents()
     }, [])
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('syncTickets', { 
+                detail: { activityCredits, expiringCredits } 
+            }))
+        }
+    }, [activityCredits, expiringCredits])
 
     const fetchEvents = async () => {
         setIsLoading(true)
@@ -143,8 +152,11 @@ export function ActivitiesCarousel() {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 setUserId(user.id)
-                const { data: profile } = await supabase.from('profiles').select('reservation_credits').eq('id', user.id).single()
-                if (profile) setUserCredits(profile.reservation_credits || 0)
+                const { data: profile } = await supabase.from('profiles').select('activity_credits, expiring_activity_credits').eq('id', user.id).single()
+                if (profile) {
+                    setActivityCredits(profile.activity_credits || {})
+                    setExpiringCredits(profile.expiring_activity_credits || {})
+                }
 
                 const { data: reservations } = await supabase.from('reservations').select('class_id').eq('user_id', user.id)
                 if (reservations) setUserReservations(reservations.map(r => r.class_id))
@@ -160,16 +172,24 @@ export function ActivitiesCarousel() {
     const handleReserve = async (classId: string, activityTitle: string, classTime: string) => {
         if (!userId) return
 
-        if (userCredits <= 0) {
-            toast.error("No tienes créditos suficientes", {
-                description: "Por favor, compra clases en administración.",
+        const currentCredits = activityCredits[activityTitle] || 0
+        const expiring = expiringCredits[activityTitle] || 0
+        const totalCredits = currentCredits + expiring
+
+        if (totalCredits <= 0) {
+            toast.error(`No tienes tickets para ${activityTitle}`, {
+                description: "Por favor, solicita tickets en administración.",
             })
             return
         }
 
         // Optimistic update
         setUserReservations(prev => [...prev, classId])
-        setUserCredits(prev => prev - 1)
+        if (expiring > 0) {
+            setExpiringCredits(prev => ({ ...prev, [activityTitle]: expiring - 1 }))
+        } else {
+            setActivityCredits(prev => ({ ...prev, [activityTitle]: currentCredits - 1 }))
+        }
         setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) + 1 }))
 
         toast.success(`Clase de ${activityTitle} reservada`, {
@@ -179,10 +199,14 @@ export function ActivitiesCarousel() {
         const { reserveClass } = await import('@/app/actions/reservation-actions')
         const result = await reserveClass(classId, userId)
 
-        if (result.error) {
+        if (result?.error) {
             // Rollback
             setUserReservations(prev => prev.filter(id => id !== classId))
-            setUserCredits(prev => prev + 1)
+            if (expiring > 0) {
+                setExpiringCredits(prev => ({ ...prev, [activityTitle]: expiring }))
+            } else {
+                setActivityCredits(prev => ({ ...prev, [activityTitle]: currentCredits }))
+            }
             setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) - 1 }))
             toast.error("Error al reservar", {
                 description: result.error,
@@ -195,9 +219,11 @@ export function ActivitiesCarousel() {
 
         if (!confirm("¿Deseas cancelar esta reserva?")) return
 
+        const currentCredits = activityCredits[activityTitle] || 0
+
         // Optimistic update
         setUserReservations(prev => prev.filter(id => id !== classId))
-        setUserCredits(prev => prev + 1)
+        setActivityCredits(prev => ({ ...prev, [activityTitle]: currentCredits + 1 }))
         setReservationCounts(prev => ({ ...prev, [classId]: Math.max((prev[classId] || 0) - 1, 0) }))
 
         toast.info("Reserva cancelada", {
@@ -207,10 +233,10 @@ export function ActivitiesCarousel() {
         const { cancelReservation } = await import('@/app/actions/reservation-actions')
         const result = await cancelReservation(classId, userId)
 
-        if (result.error) {
+        if (result?.error) {
             // Rollback
             setUserReservations(prev => [...prev, classId])
-            setUserCredits(prev => prev - 1)
+            setActivityCredits(prev => ({ ...prev, [activityTitle]: currentCredits }))
             setReservationCounts(prev => ({ ...prev, [classId]: (prev[classId] || 0) + 1 }))
             toast.error("Error al cancelar", { description: result.error })
         }
@@ -226,6 +252,26 @@ export function ActivitiesCarousel() {
 
     return (
         <div className="w-full py-4">
+            <h3 className="hidden md:block text-center text-muted-foreground text-sm mb-4 uppercase tracking-widest">Mis Tickets de Clase</h3>
+            <div className="hidden md:flex flex-wrap justify-center gap-4 mb-8 max-w-[1400px] mx-auto">
+                {Object.keys(activityCredits).length > 0 ? Object.keys(activityCredits).map((activity) => {
+                    const current = activityCredits[activity] || 0;
+                    const expiring = expiringCredits[activity] || 0;
+                    const total = current + expiring;
+                    return (
+                        <Card key={activity} className="min-w-[140px] bg-background/50 border shadow-sm">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                <span className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">{activity}</span>
+                                <span className="text-3xl font-black">{total}</span>
+                                {expiring > 0 && <span className="text-[10px] text-orange-500 font-bold mt-1 px-2 py-0.5 bg-orange-500/10 rounded-full">{expiring} por vencer</span>}
+                            </CardContent>
+                        </Card>
+                    )
+                }) : (
+                    <div className="text-sm text-muted-foreground">No tienes tickets asignados.</div>
+                )}
+            </div>
+
             <h3 className="text-center text-muted-foreground text-sm mb-4 uppercase tracking-widest">{weekRange}</h3>
             <Carousel
                 className="w-full max-w-[1400px] mx-auto"

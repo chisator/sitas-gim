@@ -8,10 +8,12 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { EventDialog } from "@/components/admin/event-dialog"
+import { AttendeesDialog } from "@/components/admin/attendees-dialog"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
+import { getAdminEvents } from "@/app/actions/admin-actions"
 
 export default function AdminEventosPage() {
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -40,13 +42,13 @@ export default function AdminEventosPage() {
     const fetchEvents = async () => {
         setIsLoading(true)
         try {
-            const { data, error } = await supabase
-                .from('gym_classes')
-                .select('*, profiles(full_name)')
-                .order('start_time', { ascending: true })
-
-            if (error) throw error
-            setEvents(data || [])
+            const result = await getAdminEvents()
+            
+            if (result.error) {
+                toast.error(result.error)
+            } else if (result.success && result.events) {
+                setEvents(result.events)
+            }
         } catch (error) {
             console.error('Error fetching events:', error)
             toast.error("Error al cargar eventos")
@@ -127,7 +129,7 @@ export default function AdminEventosPage() {
                 <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
                     <div className="flex items-center gap-3">
                         <Button variant="ghost" size="icon" asChild className="mr-2">
-                            <Link href="/admin">
+                            <Link href={userProfile?.role === "entrenador" ? "/entrenador" : "/admin"}>
                                 <ChevronLeft className="h-5 w-5" />
                             </Link>
                         </Button>
@@ -199,7 +201,13 @@ export default function AdminEventosPage() {
                                                 </p>
                                                 {event.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{event.description}</p>}
                                             </div>
-                                            <div className="flex flex-wrap gap-2 self-start xl:self-center">
+                                            <div className="flex flex-wrap gap-2 self-start xl:self-center items-center">
+                                                <AttendeesDialog
+                                                    classId={event.id}
+                                                    title={event.title}
+                                                    currentCount={event.reservations?.length || 0}
+                                                    capacity={event.capacity || 20}
+                                                />
                                                 <EventDialog eventToEdit={event} onSuccess={fetchEvents}>
                                                     <Button variant="outline" size="sm" className="h-8">Editar</Button>
                                                 </EventDialog>

@@ -30,6 +30,7 @@ import { toast } from "sonner"
 const eventSchema = z.object({
     title: z.string().min(2, "El título debe tener al menos 2 caracteres"),
     description: z.string().optional(),
+    capacity: z.coerce.number().min(1, "El cupo debe ser mayor a 0").optional(),
     date: z.string().min(1, "La fecha es requerida"),
     startTime: z.string().min(1, "La hora de inicio es requerida"),
     endTime: z.string().min(1, "La hora de fin es requerida"),
@@ -63,6 +64,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
         defaultValues: {
             title: "",
             description: "",
+            capacity: 20,
             date: "",
             startTime: "",
             endTime: "",
@@ -85,6 +87,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                 reset({
                     title: eventToEdit.title,
                     description: eventToEdit.description || "",
+                    capacity: eventToEdit.capacity || 20,
                     date: startDate.toISOString().split('T')[0],
                     startTime: startDate.toTimeString().slice(0, 5),
                     endTime: endDate.toTimeString().slice(0, 5),
@@ -96,6 +99,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                 reset({
                     title: "",
                     description: "",
+                    capacity: 20,
                     date: "",
                     startTime: "",
                     endTime: "",
@@ -127,6 +131,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                 const updatePayload = {
                     title: data.title,
                     description: data.description,
+                    capacity: data.capacity,
                     start_time: startDateTime.toISOString(),
                     end_time: endDateTime.toISOString(),
                     instructor_id: data.instructorId || null,
@@ -169,6 +174,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                             .update({
                                 title: data.title,
                                 description: data.description,
+                                capacity: data.capacity,
                                 instructor_id: data.instructorId || null,
                                 // Note: We do NOT update start_time/end_time date part, only Time part if needed?
                                 // Actually, if user changed time in form, we should update time for all?
@@ -228,6 +234,7 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                         eventsToCreate.push({
                             title: data.title,
                             description: data.description,
+                            capacity: data.capacity,
                             start_time: startDateTime.toISOString(),
                             end_time: endDateTime.toISOString(),
                             instructor_id: data.instructorId || null,
@@ -294,18 +301,34 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                             )}
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="date">Fecha</Label>
-                            <Controller
-                                control={control}
-                                name="date"
-                                render={({ field }) => (
-                                    <Input id="date" type="date" {...field} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="date">Fecha</Label>
+                                <Controller
+                                    control={control}
+                                    name="date"
+                                    render={({ field }) => (
+                                        <Input id="date" type="date" {...field} />
+                                    )}
+                                />
+                                {errors.date && (
+                                    <p className="text-sm text-destructive">{errors.date.message}</p>
                                 )}
-                            />
-                            {errors.date && (
-                                <p className="text-sm text-destructive">{errors.date.message}</p>
-                            )}
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="capacity">Cupo Máximo</Label>
+                                <Controller
+                                    control={control}
+                                    name="capacity"
+                                    render={({ field }) => (
+                                        <Input id="capacity" type="number" placeholder="Ej. 20" {...field} />
+                                    )}
+                                />
+                                {errors.capacity && (
+                                    <p className="text-sm text-destructive">{errors.capacity.message}</p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

@@ -37,7 +37,12 @@ export function UsersTable({ users }: UsersTableProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<"deportista" | "entrenador" | "administrador">("deportista")
-  const [planCredits, setPlanCredits] = useState("0")
+  const [activityCredits, setActivityCredits] = useState<Record<string, number>>({
+    "Indoor Bike": 0,
+    "Crossfit": 0,
+    "Funcional": 0,
+    "Box Training": 0
+  })
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
   const [nameFilter, setNameFilter] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
@@ -100,8 +105,6 @@ export function UsersTable({ users }: UsersTableProps) {
       return
     }
 
-    const credits = parseInt(planCredits) || 0
-
     if (!email.trim()) {
       setError("El email es requerido")
       setIsLoading(false)
@@ -125,8 +128,7 @@ export function UsersTable({ users }: UsersTableProps) {
       password,
       fullName,
       role,
-      reservationCredits: credits,
-      planCredits: credits
+      activityCredits
     })
 
     if (result.error) {
@@ -140,7 +142,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setPassword("")
     setFullName("")
     setRole("deportista")
-    setPlanCredits("0")
+    setActivityCredits({ "Indoor Bike": 0, "Crossfit": 0, "Funcional": 0, "Box Training": 0 })
     setError(null)
     setIsLoading(false)
   }
@@ -150,7 +152,13 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail(user.email)
     setFullName(user.full_name)
     setRole(user.role)
-    setPlanCredits(user.plan_credits?.toString() || "0")
+    const storedTickets = user.activity_credits || {}
+    setActivityCredits({
+      "Indoor Bike": storedTickets["Indoor Bike"] || 0,
+      "Crossfit": storedTickets["Crossfit"] || 0,
+      "Funcional": storedTickets["Funcional"] || 0,
+      "Box Training": storedTickets["Box Training"] || 0
+    })
     setIsEditOpen(true)
   }
 
@@ -159,22 +167,12 @@ export function UsersTable({ users }: UsersTableProps) {
     setIsLoading(true)
     setError(null)
 
-    const newPlanCredits = parseInt(planCredits) || 0
-    const oldPlanCredits = editingUser.plan_credits || 0
-    const currentReservationCredits = editingUser.reservation_credits || 0
-
-    // Calculate difference and apply to current balance
-    // Example: Plan 8 -> Used 1 -> Left 7. Change to 12. Diff +4. New Balance 11.
-    const creditDifference = newPlanCredits - oldPlanCredits
-    const newReservationCredits = Math.max(0, currentReservationCredits + creditDifference)
-
     const result = await updateUser({
       userId: editingUser.id,
       email,
       fullName,
       role,
-      reservationCredits: newReservationCredits,
-      planCredits: newPlanCredits
+      activityCredits
     })
 
     if (result.error) {
@@ -188,7 +186,7 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail("")
     setFullName("")
     setRole("deportista")
-    setPlanCredits("0")
+    setActivityCredits({ "Indoor Bike": 0, "Crossfit": 0, "Funcional": 0, "Box Training": 0 })
     setIsLoading(false)
   }
 
@@ -223,6 +221,11 @@ export function UsersTable({ users }: UsersTableProps) {
     )
   }
 
+  const getTotalCredits = (credits: Record<string, number> | null) => {
+    if (!credits) return 0
+    return Object.values(credits).reduce((acc, val) => acc + (val || 0), 0)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -238,7 +241,7 @@ export function UsersTable({ users }: UsersTableProps) {
               setPassword("")
               setFullName("")
               setRole("deportista")
-              setPlanCredits("0")
+              setActivityCredits({ "Indoor Bike": 0, "Crossfit": 0, "Funcional": 0, "Box Training": 0 })
               setError(null)
               setShowPassword(false)
             }
@@ -309,19 +312,21 @@ export function UsersTable({ users }: UsersTableProps) {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="plan">Plan Mensual (Renovación Automática)</Label>
-                  <Select value={planCredits} onValueChange={setPlanCredits}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Sin Plan</SelectItem>
-                      <SelectItem value="4">4 Clases</SelectItem>
-                      <SelectItem value="8">8 Clases</SelectItem>
-                      <SelectItem value="12">12 Clases</SelectItem>
-                      <SelectItem value="50">Ilimitado (50 Clases)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Tickets por Actividad (Mes Actual)</Label>
+                  <div className="grid grid-cols-2 gap-4 border p-3 rounded-md">
+                    {Object.keys(activityCredits).map((activity) => (
+                      <div key={activity} className="grid gap-1">
+                        <Label htmlFor={`create-${activity}`} className="text-xs text-muted-foreground">{activity}</Label>
+                        <Input
+                          id={`create-${activity}`}
+                          type="number"
+                          min="0"
+                          value={activityCredits[activity]}
+                          onChange={(e) => setActivityCredits({ ...activityCredits, [activity]: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid gap-2">
@@ -421,7 +426,7 @@ export function UsersTable({ users }: UsersTableProps) {
                 <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{user.reservation_credits || 0}</TableCell>
+                <TableCell>{getTotalCredits(user.activity_credits)}</TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString("es-ES")}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -474,19 +479,21 @@ export function UsersTable({ users }: UsersTableProps) {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-plan">Plan Mensual (Renovación Automática)</Label>
-                <Select value={planCredits} onValueChange={setPlanCredits}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">Sin Plan</SelectItem>
-                    <SelectItem value="4">4 Clases</SelectItem>
-                    <SelectItem value="8">8 Clases</SelectItem>
-                    <SelectItem value="12">12 Clases</SelectItem>
-                    <SelectItem value="9999">Ilimitado</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Label>Tickets por Actividad (Mes Actual)</Label>
+                  <div className="grid grid-cols-2 gap-4 border p-3 rounded-md">
+                    {Object.keys(activityCredits).map((activity) => (
+                      <div key={activity} className="grid gap-1">
+                        <Label htmlFor={`edit-${activity}`} className="text-xs text-muted-foreground">{activity}</Label>
+                        <Input
+                          id={`edit-${activity}`}
+                          type="number"
+                          min="0"
+                          value={activityCredits[activity]}
+                          onChange={(e) => setActivityCredits({ ...activityCredits, [activity]: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    ))}
+                  </div>
               </div>
 
               <div className="grid gap-2">

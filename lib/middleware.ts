@@ -65,10 +65,18 @@ export async function updateSession(request: NextRequest) {
     const role = user.user_metadata?.role
 
     // Verificar acceso a rutas de administrador
-    if (request.nextUrl.pathname.startsWith("/admin") && role !== "administrador") {
-      const url = request.nextUrl.clone()
-      url.pathname = "/unauthorized"
-      return NextResponse.redirect(url)
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      const isAllowedAdminRouteForTrainer = 
+        request.nextUrl.pathname.startsWith("/admin/ejercicios") || 
+        request.nextUrl.pathname.startsWith("/admin/eventos");
+      
+      if (role === "entrenador" && isAllowedAdminRouteForTrainer) {
+        // Permitido para entrenadores
+      } else if (role !== "administrador") {
+        const url = request.nextUrl.clone()
+        url.pathname = "/unauthorized"
+        return NextResponse.redirect(url)
+      }
     }
 
     // Verificar acceso a rutas de entrenador

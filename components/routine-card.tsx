@@ -146,36 +146,42 @@ export function RoutineCard({ routine, attendance, athleteId, isPast = false, in
         )}
 
         <div className="mt-auto">
-          <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full space-y-2">
-            <div className="flex items-center justify-between space-x-4">
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full flex justify-between items-center">
-                  <span>Ver detalles y ejercicios</span>
-                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent className="space-y-4 pt-4 border-t mt-4">
-              <div className="space-y-4">
-                {routine.description && (
-                  <div>
-                    <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
-                    <p className="text-sm text-muted-foreground">{routine.description}</p>
-                  </div>
-                )}
-
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
-                  <ul className="space-y-4">
-                    {exercises.map((exercise: any, index: number) => (
-                      <ExerciseItem key={index} exercise={exercise} />
-                    ))}
-                  </ul>
-                  {exercises.length === 0 && <p className="text-sm text-muted-foreground">No hay ejercicios en esta rutina.</p>}
-                </div>
+          {isPast ? (
+            <Button variant="outline" size="sm" className="w-full cursor-not-allowed opacity-70" disabled>
+              Rutina finalizada - Detalles ocultos
+            </Button>
+          ) : (
+            <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full space-y-2">
+              <div className="flex items-center justify-between space-x-4">
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full flex justify-between items-center">
+                    <span>Ver detalles y ejercicios</span>
+                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+              <CollapsibleContent className="space-y-4 pt-4 border-t mt-4">
+                <div className="space-y-4">
+                  {routine.description && (
+                    <div>
+                      <h4 className="font-semibold mb-1 text-sm">Descripción</h4>
+                      <p className="text-sm text-muted-foreground">{routine.description}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-semibold mb-2 text-sm">Ejercicios</h4>
+                    <ul className="space-y-4">
+                      {exercises.map((exercise: any, index: number) => (
+                        <ExerciseItem key={index} exercise={exercise} />
+                      ))}
+                    </ul>
+                    {exercises.length === 0 && <p className="text-sm text-muted-foreground">No hay ejercicios en esta rutina.</p>}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </CardContent>
     </Card>

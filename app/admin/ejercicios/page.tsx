@@ -21,9 +21,11 @@ export default async function ExercisesPage() {
 
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-    if (profile?.role !== "administrador") {
+    if (profile?.role !== "administrador" && profile?.role !== "entrenador") {
         redirect("/unauthorized")
     }
+
+    const backUrl = profile?.role === "entrenador" ? "/entrenador" : "/admin"
 
     const { exercises } = await getExerciseCatalog()
 
@@ -33,7 +35,7 @@ export default async function ExercisesPage() {
                 <div className="container mx-auto flex h-16 items-center justify-between px-4">
                     <div className="flex items-center gap-3">
                         <Button variant="ghost" size="icon" asChild className="mr-2">
-                            <Link href="/admin">
+                            <Link href={backUrl}>
                                 <ArrowLeft className="h-5 w-5" />
                             </Link>
                         </Button>
@@ -45,7 +47,7 @@ export default async function ExercisesPage() {
                     <div className="flex items-center gap-4">
                         <div className="hidden sm:block text-right">
                             <p className="text-sm font-medium">{profile?.full_name}</p>
-                            <Badge variant="secondary">Admin</Badge>
+                            <Badge variant="secondary" className="capitalize">{profile?.role}</Badge>
                         </div>
                         <LogoutButton />
                     </div>

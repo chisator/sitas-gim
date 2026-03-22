@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient as createServerClient } from "@/lib/server"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 
 export async function updateRoutine(formData: {
@@ -28,10 +29,18 @@ export async function updateRoutine(formData: {
       return { error: "No tienes permisos para actualizar rutinas" }
     }
 
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+
     const updatePayload: any = {
       title: formData.title,
       description: formData.description,
       exercises: formData.exercises,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
     }
 
     const normalizeDate = (d: string) => {
@@ -48,12 +57,7 @@ export async function updateRoutine(formData: {
       updatePayload.trainer_id = formData.trainerId
     }
 
-    let query = supabase.from("routines").update(updatePayload).eq("id", formData.routineId)
-
-    // If not admin, restrict update to their own routines
-    if (userRole !== "administrador") {
-      query = query.eq("trainer_id", user.id)
-    }
+    let query = supabaseAdmin.from("routines").update(updatePayload).eq("id", formData.routineId)
 
     const { error: updateError } = await query
 
@@ -63,8 +67,8 @@ export async function updateRoutine(formData: {
 
     // Si vienen userIds, sincronizar las asignaciones en routine_user_assignments
     if (formData.userIds) {
-      // Borrar asignaciones previas para esta rutina (el trainer propietario o admin puede hacerlo por RLS)
-      const { error: delError } = await supabase.from("routine_user_assignments").delete().eq("routine_id", formData.routineId)
+      // Borrar asignaciones previas para esta rutina (supabaseAdmin bypasses RLS)
+      const { error: delError } = await supabaseAdmin.from("routine_user_assignments").delete().eq("routine_id", formData.routineId)
       if (delError) return { error: delError.message }
 
       if (formData.userIds.length > 0) {
@@ -72,7 +76,7 @@ export async function updateRoutine(formData: {
           routine_id: formData.routineId,
           user_id: uid
         }))
-        const { error: insError } = await supabase.from("routine_user_assignments").insert(rows)
+        const { error: insError } = await supabaseAdmin.from("routine_user_assignments").insert(rows)
         if (insError) return { error: insError.message }
       }
     }
