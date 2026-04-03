@@ -11,7 +11,7 @@ import { RoutinesTable } from "@/components/routines-table"
 import { TrainerRoutinesStats } from "@/components/trainer-routines-stats"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import { MobileMenu } from "@/components/mobile-menu"
+
 
 
 export default async function AdminPage() {
@@ -92,7 +92,7 @@ export default async function AdminPage() {
                 Administrador
               </Badge>
             </div>
-            <MobileMenu role="administrador" />
+
             <div className="hidden md:block">
               <LogoutButton />
             </div>
@@ -211,11 +211,11 @@ export default async function AdminPage() {
           </TabsContent>
 
           <TabsContent value="routines">
-            <RoutinesTable routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} />
+            <RoutinesTable routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
           </TabsContent>
 
           <TabsContent value="stats">
-            <TrainerRoutinesStats routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} />
+            <TrainerRoutinesStats routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
           </TabsContent>
         </Tabs>
       </main>

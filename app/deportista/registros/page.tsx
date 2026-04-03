@@ -3,9 +3,9 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ChevronRight, ClipboardList } from "lucide-react"
+import { ChevronRight, ClipboardList, ChevronLeft } from "lucide-react"
 import { Logo } from "@/components/logo"
-import { MobileMenu } from "@/components/mobile-menu"
+
 import { LogoutButton } from "@/components/logout-button"
 import { Badge } from "@/components/ui/badge"
 
@@ -65,9 +65,12 @@ export default async function RegistrosPage() {
             <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container mx-auto flex min-h-[5rem] items-center justify-between px-4 py-2">
                     <div className="flex items-center gap-3">
-                        <Link href="/deportista">
-                            <Logo size={60} />
-                        </Link>
+                        <Button variant="ghost" size="icon" asChild className="mr-2">
+                            <Link href="/deportista">
+                                <ChevronLeft className="h-6 w-6" />
+                                <span className="sr-only">Volver</span>
+                            </Link>
+                        </Button>
                         <span className="font-semibold text-lg hidden sm:inline-block">Mis Registros</span>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -85,7 +88,7 @@ export default async function RegistrosPage() {
                                 Deportista
                             </Badge>
                         </div>
-                        <MobileMenu />
+
                         <div className="hidden md:block">
                             <LogoutButton />
                         </div>

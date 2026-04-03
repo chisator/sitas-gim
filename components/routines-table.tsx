@@ -14,11 +14,22 @@ import { useState } from "react"
 interface RoutinesTableProps {
   routines: any[]
   trainers: any[]
+  users?: any[]
 }
 
-export function RoutinesTable({ routines, trainers }: RoutinesTableProps) {
+export function RoutinesTable({ routines, trainers, users = [] }: RoutinesTableProps) {
   const getTrainerName = (trainerId: string) => {
     return trainers.find(t => t.id === trainerId)?.full_name || "N/A"
+  }
+
+  const getAssignedUserNames = (routine: any) => {
+    if (!routine.routine_user_assignments || routine.routine_user_assignments.length === 0) {
+      return "Sin asignar";
+    }
+    return routine.routine_user_assignments.map((assignment: any) => {
+      const user = users.find(u => u.id === assignment.user_id);
+      return user ? user.full_name : "Deportista";
+    }).join(", ");
   }
 
   const router = useRouter()
@@ -97,6 +108,11 @@ export function RoutinesTable({ routines, trainers }: RoutinesTableProps) {
               </TableHead>
               <TableHead className="align-top pt-4">
                 <div className="flex flex-col gap-2 h-full justify-start">
+                  <span className="font-bold py-1">Asignada a</span>
+                </div>
+              </TableHead>
+              <TableHead className="align-top pt-4">
+                <div className="flex flex-col gap-2 h-full justify-start">
                   <span className="font-bold py-1">Fecha de Inicio</span>
                 </div>
               </TableHead>
@@ -121,6 +137,9 @@ export function RoutinesTable({ routines, trainers }: RoutinesTableProps) {
                 <TableCell className="font-medium">{routine.title}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{getTrainerName(routine.trainer_id)}</Badge>
+                </TableCell>
+                <TableCell className="max-w-[150px] truncate" title={getAssignedUserNames(routine)}>
+                  {getAssignedUserNames(routine)}
                 </TableCell>
                 <TableCell>{new Date(routine.start_date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}</TableCell>
                 <TableCell>{new Date(routine.end_date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}</TableCell>

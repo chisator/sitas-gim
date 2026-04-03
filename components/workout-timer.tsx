@@ -139,7 +139,7 @@ export function WorkoutTimer() {
     const content = (
         <div
             id="workout-timer-container"
-            className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2 isolate pointer-events-auto"
+            className="fixed bottom-20 md:bottom-4 right-4 z-40 flex flex-col items-end gap-2 isolate pointer-events-auto"
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}

@@ -9,7 +9,7 @@ import { RoutineCard } from "@/components/routine-card"
 import Image from "next/image"
 import { ActivitiesCarousel } from "@/components/activities-carousel"
 import { Logo } from "@/components/logo"
-import { MobileMenu } from "@/components/mobile-menu"
+
 
 
 export default async function DeportistaPage() {
@@ -107,7 +107,7 @@ export default async function DeportistaPage() {
                 Deportista
               </Badge>
             </div>
-            <MobileMenu role="deportista" />
+
             <div className="hidden md:block">
               <LogoutButton />
             </div>

@@ -50,15 +50,16 @@ export function MobileMenu({ role }: MobileMenuProps) {
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="h-6 w-6" />
-                    <span className="sr-only">Abrir menú</span>
-                </Button>
+                <div className="flex flex-col items-center justify-center w-full h-full space-y-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                    <Menu className="h-5 w-5" />
+                    <span className="font-medium">Más</span>
+                </div>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+            <SheetContent side="bottom" className="w-full rounded-t-xl px-4 pb-6 pt-2">
+                <div className="mx-auto mt-2 mb-6 h-1.5 w-12 rounded-full bg-muted" />
                 <SheetHeader className="flex flex-col items-center mb-6">
                     <Logo size={100} />
-                    <SheetTitle className="mt-4">Menú</SheetTitle>
+                    <SheetTitle className="mt-2 sr-only">Menú</SheetTitle>
                 </SheetHeader>
 
                 <div className="flex flex-col gap-4">
@@ -84,33 +85,6 @@ export function MobileMenu({ role }: MobileMenuProps) {
                                     )
                                 }) : <p className="text-xs text-muted-foreground">Cargando billetes...</p>}
                             </div>
-                            <Separator className="mb-2" />
-
-                            <Button asChild variant="ghost" className="w-full justify-start">
-                                <Link href="/deportista/registros" onClick={() => setOpen(false)}>
-                                    Registros
-                                </Link>
-                            </Button>
-                            <Button asChild variant="ghost" className="w-full justify-start">
-                                <Link href="/deportista/progreso" onClick={() => setOpen(false)}>
-                                    Progreso
-                                </Link>
-                            </Button>
-                        </>
-                    )}
-
-                    {(role === "entrenador" || role === "administrador") && (
-                        <>
-                            <Button asChild variant="ghost" className="w-full justify-start">
-                                <Link href="/admin/ejercicios" onClick={() => setOpen(false)}>
-                                    Catálogo de Ejercicios
-                                </Link>
-                            </Button>
-                            <Button asChild variant="ghost" className="w-full justify-start">
-                                <Link href="/admin/eventos" onClick={() => setOpen(false)}>
-                                    Clases y Eventos
-                                </Link>
-                            </Button>
                         </>
                     )}
 

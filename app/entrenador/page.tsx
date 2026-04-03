@@ -9,7 +9,7 @@ import { TrainerRoutineCard } from "@/components/trainer-routine-card"
 import Link from "next/link"
 import { TrainerUserFilter } from "@/components/trainer-user-filter"
 import { Logo } from "@/components/logo"
-import { MobileMenu } from "@/components/mobile-menu"
+
 
 
 export default async function EntrenadorPage({ searchParams }: { searchParams?: { userId?: string } }) {
@@ -157,7 +157,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
                 Entrenador
               </Badge>
             </div>
-            <MobileMenu role="entrenador" />
+
             <div className="hidden md:block">
               <LogoutButton />
             </div>

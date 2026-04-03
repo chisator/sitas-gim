@@ -5,16 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface TrainerRoutinesStatsProps {
     routines: any[]
     trainers: any[]
+    users?: any[]
 }
 
-export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStatsProps) {
+export function TrainerRoutinesStats({ routines, trainers, users = [] }: TrainerRoutinesStatsProps) {
     const [startDate, setStartDate] = useState<string>("")
     const [endDate, setEndDate] = useState<string>("")
-    const [groupingDays, setGroupingDays] = useState<number>(21)
+    const [groupingDays, setGroupingDays] = useState<number | "">(21)
 
     // Filtrar rutinas por rango de fechas
     const filteredRoutines = routines.filter(routine => {
@@ -81,6 +83,7 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
         // 4. Contar "Programas" (agrupando por usuario en ventana de N días)
         let programCount = 0
         const lastProgramDateByUser: Record<string, Date> = {}
+        const recordedNames = new Set<string>()
 
         assignments.forEach(assign => {
             const lastDate = lastProgramDateByUser[assign.userId]
@@ -90,7 +93,8 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
                 const diffTime = Math.abs(assign.date.getTime() - lastDate.getTime())
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-                if (diffDays <= groupingDays) {
+                const currentGrouping = Number(groupingDays) || 0
+                if (diffDays <= currentGrouping) {
                     isNewProgram = false
                 }
             }
@@ -98,6 +102,11 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
             if (isNewProgram) {
                 programCount++
                 lastProgramDateByUser[assign.userId] = assign.date
+
+                const userRecord = users.find(u => u.id === assign.userId)
+                if (userRecord) {
+                    recordedNames.add(userRecord.full_name || "Sin nombre")
+                }
             }
         })
 
@@ -106,7 +115,8 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
         return {
             id: trainer.id,
             name: trainer.full_name || "Sin nombre",
-            count: programCount
+            count: programCount,
+            assignedNames: Array.from(recordedNames)
         }
     }).sort((a, b) => b.count - a.count)
 
@@ -127,7 +137,7 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
                             id="groupingDays"
                             min={0}
                             value={groupingDays}
-                            onChange={(e) => setGroupingDays(Number(e.target.value) || 0)}
+                            onChange={(e) => setGroupingDays(e.target.value === "" ? "" : Number(e.target.value))}
                         />
                     </div>
                     <div className="grid w-full max-w-[150px] items-center gap-1.5 ml-0 sm:ml-4">
@@ -162,7 +172,25 @@ export function TrainerRoutinesStats({ routines, trainers }: TrainerRoutinesStat
                             {programsPerTrainer.map((stat) => (
                                 <TableRow key={stat.id}>
                                     <TableCell className="font-medium">{stat.name}</TableCell>
-                                    <TableCell className="text-right font-bold">{stat.count}</TableCell>
+                                    <TableCell className="text-right">
+                                        {stat.count > 0 ? (
+                                            <Popover>
+                                                <PopoverTrigger className="font-bold underline decoration-dashed cursor-help">
+                                                    {stat.count}
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-64 p-3 text-sm" side="top">
+                                                    <p className="font-semibold mb-2 text-primary">Asignados a:</p>
+                                                    <ul className="list-disc pl-4 space-y-1 text-muted-foreground max-h-48 overflow-y-auto">
+                                                        {stat.assignedNames.map(name => (
+                                                            <li key={name}>{name}</li>
+                                                        ))}
+                                                    </ul>
+                                                </PopoverContent>
+                                            </Popover>
+                                        ) : (
+                                            <span className="font-bold text-muted-foreground">{stat.count}</span>
+                                        )}
+                                    </TableCell>
                                 </TableRow>
                             ))}
                             {programsPerTrainer.length === 0 && (
