@@ -165,6 +165,7 @@ export async function updateUser(formData: {
   fullName: string
   role: "deportista" | "entrenador" | "administrador"
   activityCredits?: Record<string, number>
+  password?: string
 }) {
   try {
     const supabase = await createServerClient()
@@ -183,14 +184,27 @@ export async function updateUser(formData: {
       },
     })
 
-    // Actualizar email y metadata del usuario
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(formData.userId, {
+    if (formData.password) {
+      const { data: targetUser } = await supabaseAdmin.auth.admin.getUserById(formData.userId)
+      if (targetUser?.user?.user_metadata?.role === "administrador") {
+        return { error: "No puedes cambiar la contraseña de otro administrador" }
+      }
+    }
+
+    const updateData: any = {
       email: formData.email,
       user_metadata: {
         full_name: formData.fullName,
         role: formData.role,
       },
-    })
+    }
+
+    if (formData.password) {
+      updateData.password = formData.password
+    }
+
+    // Actualizar email y metadata del usuario
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(formData.userId, updateData)
 
     if (updateError) {
       return { error: updateError.message }
@@ -480,5 +494,89 @@ export async function getAttendees(classId: string) {
   } catch (error: any) {
     console.log("getAttendees caught error:", error)
     return { error: error.message || "Error al obtener asistentes" }
+  }
+}
+
+export async function createGymClasses(eventsToCreate: any[]) {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || (user.user_metadata?.role !== "administrador" && user.user_metadata?.role !== "entrenador")) {
+      return { error: "No tienes permisos" }
+    }
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    const { error } = await supabaseAdmin.from("gym_classes").insert(eventsToCreate)
+
+    if (error) {
+      console.error("[createGymClasses] Supabase error:", error)
+      return { error: error.message }
+    }
+
+    revalidatePath("/admin/eventos")
+    return { success: true }
+  } catch (error: any) {
+    console.error("[createGymClasses] Unexpected error:", error)
+    return { error: error.message || "Error al crear clases" }
+  }
+}
+
+export async function updateGymClass(id: string, updatePayload: any) {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || (user.user_metadata?.role !== "administrador" && user.user_metadata?.role !== "entrenador")) {
+      return { error: "No tienes permisos" }
+    }
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    const { error } = await supabaseAdmin.from("gym_classes").update(updatePayload).eq("id", id)
+
+    if (error) {
+      console.error("[updateGymClass] Supabase error:", error)
+      return { error: error.message }
+    }
+
+    revalidatePath("/admin/eventos")
+    return { success: true }
+  } catch (error: any) {
+    console.error("[updateGymClass] Unexpected error:", error)
+    return { error: error.message || "Error al actualizar clase" }
+  }
+}
+
+export async function updateGymClassesBulk(idsToUpdate: string[], updatePayload: any) {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user || (user.user_metadata?.role !== "administrador" && user.user_metadata?.role !== "entrenador")) {
+      return { error: "No tienes permisos" }
+    }
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    const { error } = await supabaseAdmin.from("gym_classes").update(updatePayload).in("id", idsToUpdate)
+
+    if (error) {
+      console.error("[updateGymClassesBulk] Supabase error:", error)
+      return { error: error.message }
+    }
+
+    revalidatePath("/admin/eventos")
+    return { success: true }
+  } catch (error: any) {
+    console.error("[updateGymClassesBulk] Unexpected error:", error)
+    return { error: error.message || "Error al actualizar clases" }
   }
 }

@@ -3,6 +3,7 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { createClient } from "@/lib/client"
+import { createGymClasses, updateGymClass, updateGymClassesBulk } from "@/app/actions/admin-actions"
 import { Button } from "@/components/ui/button"
 import { Trash2, Plus } from "lucide-react"
 import {
@@ -169,43 +170,25 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
 
                     // 4. Update all
                     if (idsToUpdate.length > 0) {
-                        const { error: updateError } = await supabase
-                            .from("gym_classes")
-                            .update({
-                                title: data.title,
-                                description: data.description,
-                                capacity: data.capacity,
-                                instructor_id: data.instructorId || null,
-                                // Note: We do NOT update start_time/end_time date part, only Time part if needed?
-                                // Actually, if user changed time in form, we should update time for all?
-                                // Updating time for recurrent events is tricky because we need to keep their respective DATES.
-                                // For simplicity v1: Update Title, Description, Instructor ONLY. 
-                                // Updating Time implies shifting all dates... too complex for now without more logic.
-                            })
-                            .in('id', idsToUpdate)
+                        const result = await updateGymClassesBulk(idsToUpdate, {
+                            title: data.title,
+                            description: data.description,
+                            capacity: data.capacity,
+                            instructor_id: data.instructorId || null,
+                        })
 
-                        if (updateError) throw updateError
+                        if (result.error) throw new Error(result.error)
                         toast.success(`${idsToUpdate.length} clases actualizadas (título/desc/instructor)`)
                     }
 
                     // Special case: The specific event being edited might have had its Date/Time changed manually.
-                    // The bulk update above might not correct the specific date change of THIS instance if we only updated generic fields.
-                    // So we perform a specific update on THIS ID to ensure date/time is correct.
-                    const { error: specificError } = await supabase
-                        .from("gym_classes")
-                        .update(updatePayload)
-                        .eq('id', eventToEdit.id)
-
-                    if (specificError) throw specificError
+                    const resultSpecific = await updateGymClass(eventToEdit.id, updatePayload)
+                    if (resultSpecific.error) throw new Error(resultSpecific.error)
 
                 } else {
                     // Single update
-                    const { error } = await supabase
-                        .from("gym_classes")
-                        .update(updatePayload)
-                        .eq('id', eventToEdit.id)
-
-                    if (error) throw error
+                    const result = await updateGymClass(eventToEdit.id, updatePayload)
+                    if (result.error) throw new Error(result.error)
                     toast.success("Clase actualizada exitosamente")
                 }
 
@@ -220,16 +203,20 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                     ...additionalSlots.filter(s => s.startTime && s.endTime) // Filter out incomplete slots
                 ]
 
-                // Base date
-                let currentDate = new Date(`${data.date}T00:00:00`)
+                // Base date without timezone shift
+                const [year, month, day] = data.date.split('-');
+                let currentDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0);
 
                 for (let i = 0; i < weeks; i++) {
-                    const eventDateStr = currentDate.toISOString().split('T')[0]
+                    const currentYear = currentDate.getFullYear();
+                    const currentMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+                    const currentDay = String(currentDate.getDate()).padStart(2, '0');
+                    const eventDateStr = `${currentYear}-${currentMonth}-${currentDay}`;
 
                     // Create an event for EACH time slot for THIS day
                     allTimeSlots.forEach(slot => {
-                        const startDateTime = new Date(`${eventDateStr}T${slot.startTime}`)
-                        const endDateTime = new Date(`${eventDateStr}T${slot.endTime}`)
+                        const startDateTime = new Date(`${eventDateStr}T${slot.startTime}`);
+                        const endDateTime = new Date(`${eventDateStr}T${slot.endTime}`);
 
                         eventsToCreate.push({
                             title: data.title,
@@ -244,8 +231,8 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                     currentDate.setDate(currentDate.getDate() + 7)
                 }
 
-                const { error } = await supabase.from("gym_classes").insert(eventsToCreate)
-                if (error) throw error
+                const result = await createGymClasses(eventsToCreate)
+                if (result.error) throw new Error(result.error)
 
                 // Calculate total count properly
                 const totalEvents = weeks * allTimeSlots.length
@@ -256,9 +243,9 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
             reset()
             setAdditionalSlots([]) // Clear extra slots
             onSuccess?.()
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            toast.error(eventToEdit ? "Error al actualizar la clase" : "Error al crear la(s) clase(s)")
+            toast.error(eventToEdit ? `Error al actualizar: ${error.message}` : `Error al crear: ${error.message}`)
         }
     }
 
