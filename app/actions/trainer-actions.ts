@@ -65,19 +65,51 @@ export async function updateRoutine(formData: {
       return { error: updateError.message }
     }
 
-    // Si vienen userIds, sincronizar las asignaciones en routine_user_assignments
+    // Si vienen userIds, sincronizar las asignaciones en routine_user_assignments.
+    // Se calcula la diferencia contra lo que ya existe y se insertan los nuevos ANTES
+    // de borrar los que sobran: así, si algo falla a mitad de camino, la rutina nunca
+    // queda sin deportistas asignados.
     if (formData.userIds) {
-      // Borrar asignaciones previas para esta rutina (supabaseAdmin bypasses RLS)
-      const { error: delError } = await supabaseAdmin.from("routine_user_assignments").delete().eq("routine_id", formData.routineId)
-      if (delError) return { error: delError.message }
+      const desiredUserIds = [...new Set(formData.userIds.filter(Boolean))]
 
-      if (formData.userIds.length > 0) {
-        const rows = formData.userIds.map((uid) => ({
+      const { data: currentRows, error: readError } = await supabaseAdmin
+        .from("routine_user_assignments")
+        .select("id, user_id")
+        .eq("routine_id", formData.routineId)
+        .order("created_at", { ascending: true })
+      if (readError) return { error: readError.message }
+
+      const currentUserIds = new Set((currentRows || []).map((r) => r.user_id))
+      const toAdd = desiredUserIds.filter((uid) => !currentUserIds.has(uid))
+      const toRemove = [...currentUserIds].filter((uid) => !desiredUserIds.includes(uid))
+
+      // Limpiar filas duplicadas heredadas (la tabla no tiene UNIQUE(routine_id, user_id))
+      const seenUserIds = new Set<string>()
+      const duplicateRowIds: string[] = []
+      for (const row of currentRows || []) {
+        if (seenUserIds.has(row.user_id)) duplicateRowIds.push(row.id)
+        else seenUserIds.add(row.user_id)
+      }
+      if (duplicateRowIds.length > 0) {
+        await supabaseAdmin.from("routine_user_assignments").delete().in("id", duplicateRowIds)
+      }
+
+      if (toAdd.length > 0) {
+        const rows = toAdd.map((uid) => ({
           routine_id: formData.routineId,
           user_id: uid
         }))
         const { error: insError } = await supabaseAdmin.from("routine_user_assignments").insert(rows)
         if (insError) return { error: insError.message }
+      }
+
+      if (toRemove.length > 0) {
+        const { error: delError } = await supabaseAdmin
+          .from("routine_user_assignments")
+          .delete()
+          .eq("routine_id", formData.routineId)
+          .in("user_id", toRemove)
+        if (delError) return { error: delError.message }
       }
     }
 
@@ -288,16 +320,16 @@ export async function importRoutine(formData: {
       return { error: insertErr?.message || "No se pudo crear la rutina" }
     }
 
-    // Asignar usuarios
-    if (formData.userIds.length > 0) {
-      const assignments = formData.userIds.map((uid) => ({
+    // Asignar usuarios (una misma rutina puede compartirse entre varios deportistas)
+    const userIdsToAssign = [...new Set((formData.userIds || []).filter(Boolean))]
+    if (userIdsToAssign.length > 0) {
+      const assignments = userIdsToAssign.map((uid) => ({
         routine_id: inserted.id,
         user_id: uid,
       }))
-      const { data: insertedAssignments, error: assignErr } = await supabase
+      const { error: assignErr } = await supabase
         .from("routine_user_assignments")
         .insert(assignments)
-        .select("id, routine_id, user_id")
       if (assignErr) return { error: assignErr.message }
     }
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, Users } from "lucide-react"
 import Link from "next/link"
 import { deleteRoutine } from "@/app/actions/trainer-actions"
 import { RenewRoutineDialog } from "@/components/renew-routine-dialog"
@@ -89,6 +89,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const exercises = Array.isArray(routine.exercises) ? routine.exercises : []
+  const assignedNames: string[] = Array.isArray(routine.assigned_names) ? routine.assigned_names : []
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -171,6 +172,22 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
 
 
       <CardContent className="flex flex-col flex-1">
+        {assignedNames.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            {assignedNames.slice(0, 3).map((name: string) => (
+              <Badge key={name} variant="secondary" className="text-[11px] font-normal">
+                {name}
+              </Badge>
+            ))}
+            {assignedNames.length > 3 && (
+              <Badge variant="secondary" className="text-[11px] font-normal" title={assignedNames.join(", ")}>
+                +{assignedNames.length - 3}
+              </Badge>
+            )}
+          </div>
+        )}
+
         {routine.description && (
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{routine.description}</p>
         )}

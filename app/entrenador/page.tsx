@@ -89,6 +89,27 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
     routines = data || []
   }
 
+  // Anexar los deportistas asignados a cada rutina (una rutina puede compartirse entre varios)
+  if (routines.length > 0) {
+    const { data: routineAssignmentRows } = await supabaseAdmin
+      .from("routine_user_assignments")
+      .select("routine_id, user_id")
+      .in("routine_id", routines.map((r) => r.id))
+
+    const athleteNameById = new Map((athletes || []).map((a) => [a.id, a.full_name]))
+    const namesByRoutineId = new Map<string, string[]>()
+    for (const row of routineAssignmentRows || []) {
+      const list = namesByRoutineId.get(row.routine_id) || []
+      list.push(athleteNameById.get(row.user_id) || "Deportista")
+      namesByRoutineId.set(row.routine_id, list)
+    }
+
+    routines = routines.map((r) => ({
+      ...r,
+      assigned_names: (namesByRoutineId.get(r.id) || []).sort((a, b) => a.localeCompare(b)),
+    }))
+  }
+
   // Anexar información de los creadores y los últimos editores a cada rutina
   const trainerIds = new Set<string>()
   routines.forEach(r => {
