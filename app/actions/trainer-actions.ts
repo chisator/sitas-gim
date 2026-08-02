@@ -74,33 +74,25 @@ export async function updateRoutine(formData: {
 
       const { data: currentRows, error: readError } = await supabaseAdmin
         .from("routine_user_assignments")
-        .select("id, user_id")
+        .select("user_id")
         .eq("routine_id", formData.routineId)
-        .order("created_at", { ascending: true })
       if (readError) return { error: readError.message }
 
       const currentUserIds = new Set((currentRows || []).map((r) => r.user_id))
       const toAdd = desiredUserIds.filter((uid) => !currentUserIds.has(uid))
       const toRemove = [...currentUserIds].filter((uid) => !desiredUserIds.includes(uid))
 
-      // Limpiar filas duplicadas heredadas (la tabla no tiene UNIQUE(routine_id, user_id))
-      const seenUserIds = new Set<string>()
-      const duplicateRowIds: string[] = []
-      for (const row of currentRows || []) {
-        if (seenUserIds.has(row.user_id)) duplicateRowIds.push(row.id)
-        else seenUserIds.add(row.user_id)
-      }
-      if (duplicateRowIds.length > 0) {
-        const { error: dedupError } = await supabaseAdmin.from("routine_user_assignments").delete().in("id", duplicateRowIds)
-        if (dedupError) return { error: dedupError.message }
-      }
-
       if (toAdd.length > 0) {
         const rows = toAdd.map((uid) => ({
           routine_id: formData.routineId,
           user_id: uid
         }))
-        const { error: insError } = await supabaseAdmin.from("routine_user_assignments").insert(rows)
+        // upsert + ignoreDuplicates: si dos guardados simultáneos intentan agregar
+        // al mismo deportista, el segundo no revienta contra el índice único
+        // routine_user_assignments_routine_user_key.
+        const { error: insError } = await supabaseAdmin
+          .from("routine_user_assignments")
+          .upsert(rows, { onConflict: "routine_id,user_id", ignoreDuplicates: true })
         if (insError) return { error: insError.message }
       }
 
