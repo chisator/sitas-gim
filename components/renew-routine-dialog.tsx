@@ -12,9 +12,10 @@ interface RenewRoutineDialogProps {
   onOpenChange: (open: boolean) => void
   routineId: string
   currentEndDate?: string
+  assignedNames?: string[]
 }
 
-export function RenewRoutineDialog({ isOpen, onOpenChange, routineId, currentEndDate }: RenewRoutineDialogProps) {
+export function RenewRoutineDialog({ isOpen, onOpenChange, routineId, currentEndDate, assignedNames = [] }: RenewRoutineDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [customDate, setCustomDate] = useState("")
@@ -70,6 +71,13 @@ export function RenewRoutineDialog({ isOpen, onOpenChange, routineId, currentEnd
         </DialogHeader>
 
         <div className="space-y-4">
+          {assignedNames.length > 1 && (
+            <div className="rounded-md bg-muted p-3 text-sm">
+              Esta rutina es compartida: la renovación se aplica a los{" "}
+              <strong>{assignedNames.length} deportistas</strong> asignados ({assignedNames.join(", ")}).
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="text-sm font-medium">Extender por:</Label>
             <div className="grid grid-cols-3 gap-2">

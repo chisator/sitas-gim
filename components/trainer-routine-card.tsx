@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useState, useRef, useEffect } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, Users } from "lucide-react"
 import Link from "next/link"
 import { deleteRoutine } from "@/app/actions/trainer-actions"
 import { RenewRoutineDialog } from "@/components/renew-routine-dialog"
@@ -89,6 +89,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const exercises = Array.isArray(routine.exercises) ? routine.exercises : []
+  const assignedNames: string[] = Array.isArray(routine.assigned_names) ? routine.assigned_names : []
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -101,7 +102,11 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
 
   // ... (handlers remain same)
   const handleDelete = async () => {
-    if (!confirm("¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.")) {
+    // La rutina es compartida: eliminarla la saca de TODOS los deportistas asignados.
+    const alcance = assignedNames.length > 1
+      ? `\n\nEsta rutina está asignada a ${assignedNames.length} deportistas y se les quitará a todos:\n${assignedNames.join(", ")}.`
+      : ""
+    if (!confirm(`¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.${alcance}`)) {
       return
     }
     setIsDeleting(true)
@@ -171,6 +176,22 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
 
 
       <CardContent className="flex flex-col flex-1">
+        {assignedNames.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            {assignedNames.slice(0, 3).map((name: string, i: number) => (
+              <Badge key={`${name}-${i}`} variant="secondary" className="text-[11px] font-normal">
+                {name}
+              </Badge>
+            ))}
+            {assignedNames.length > 3 && (
+              <Badge variant="secondary" className="text-[11px] font-normal" title={assignedNames.join(", ")}>
+                +{assignedNames.length - 3}
+              </Badge>
+            )}
+          </div>
+        )}
+
         {routine.description && (
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{routine.description}</p>
         )}
@@ -290,6 +311,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
         onOpenChange={setShowRenewDialog}
         routineId={routine.id}
         currentEndDate={routine.end_date}
+        assignedNames={assignedNames}
       />
 
       <ExportImportDialog
