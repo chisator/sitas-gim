@@ -1,5 +1,6 @@
 "use server"
 
+import { mensajeUsuario } from "@/lib/db-errors"
 import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 import { createClient as createServerClient } from "@/lib/server"
@@ -54,7 +55,7 @@ export async function createUser(formData: {
 
     if (createError) {
       console.log("[v0] Error creating user:", createError)
-      return { error: createError.message }
+      return { error: mensajeUsuario(createError) }
     }
 
     console.log("[v0] User created successfully:", newUser.user?.id)
@@ -114,7 +115,7 @@ export async function createUser(formData: {
     return { success: true, user: newUser }
   } catch (error: any) {
     console.error("[v0] Unexpected error:", error)
-    return { error: error.message || "Error al crear usuario" }
+    return { error: mensajeUsuario(error, "Error al crear usuario") }
   }
 }
 
@@ -128,13 +129,13 @@ export async function assignUserToTrainer(formData: { userId: string; trainerId:
     })
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al asignar usuario" }
+    return { error: mensajeUsuario(error, "Error al asignar usuario") }
   }
 }
 
@@ -149,13 +150,13 @@ export async function removeUserFromTrainer(formData: { userId: string; trainerI
       .eq("trainer_id", formData.trainerId)
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al desasignar usuario" }
+    return { error: mensajeUsuario(error, "Error al desasignar usuario") }
   }
 }
 
@@ -207,7 +208,7 @@ export async function updateUser(formData: {
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(formData.userId, updateData)
 
     if (updateError) {
-      return { error: updateError.message }
+      return { error: mensajeUsuario(updateError) }
     }
 
     // Actualizar perfil.
@@ -231,13 +232,13 @@ export async function updateUser(formData: {
       .eq("id", formData.userId)
 
     if (profileError) {
-      return { error: profileError.message }
+      return { error: mensajeUsuario(profileError) }
     }
 
     revalidatePath("/admin")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al actualizar usuario" }
+    return { error: mensajeUsuario(error, "Error al actualizar usuario") }
   }
 }
 
@@ -311,13 +312,13 @@ export async function deleteUser(userId: string) {
 
     if (deleteError) {
       console.error("[v0] Error deleting auth user:", deleteError)
-      return { error: deleteError.message }
+      return { error: mensajeUsuario(deleteError) }
     }
 
     revalidatePath("/admin")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al eliminar usuario" }
+    return { error: mensajeUsuario(error, "Error al eliminar usuario") }
   }
 }
 
@@ -333,12 +334,12 @@ export async function getExerciseCatalog() {
 
     if (error) {
       console.error("Error fetching exercise catalog:", error)
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     return { success: true, exercises: data || [] }
   } catch (error: any) {
-    return { error: error.message || "Error al obtener ejercicios" }
+    return { error: mensajeUsuario(error, "Error al obtener ejercicios") }
   }
 }
 
@@ -362,13 +363,13 @@ export async function createExerciseCatalogItem(formData: { name: string; video_
       .single()
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/ejercicios") // Path que crearemos
     return { success: true, exercise: data }
   } catch (error: any) {
-    return { error: error.message || "Error al crear ejercicio" }
+    return { error: mensajeUsuario(error, "Error al crear ejercicio") }
   }
 }
 
@@ -385,13 +386,13 @@ export async function updateExerciseCatalogItem(formData: { id: string; name: st
       .eq("id", formData.id)
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/ejercicios")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al actualizar ejercicio" }
+    return { error: mensajeUsuario(error, "Error al actualizar ejercicio") }
   }
 }
 
@@ -405,13 +406,13 @@ export async function deleteExerciseCatalogItem(id: string) {
       .eq("id", id)
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/ejercicios")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al eliminar ejercicio" }
+    return { error: mensajeUsuario(error, "Error al eliminar ejercicio") }
   }
 }
 
@@ -439,12 +440,12 @@ export async function getAdminEvents() {
       .order('start_time', { ascending: true })
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     return { success: true, events: data || [] }
   } catch (error: any) {
-    return { error: error.message || "Error al obtener eventos" }
+    return { error: mensajeUsuario(error, "Error al obtener eventos") }
   }
 }
 
@@ -473,7 +474,7 @@ export async function getAttendees(classId: string) {
 
     if (error) {
       console.log("getAttendees failed with error:", error)
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     if (!reservations || reservations.length === 0) {
@@ -489,7 +490,7 @@ export async function getAttendees(classId: string) {
 
     if (profilesError) {
       console.log("getAttendees failed fetching profiles:", profilesError)
-      return { error: profilesError.message }
+      return { error: mensajeUsuario(profilesError) }
     }
 
     const attendees = reservations.map(r => ({
@@ -502,7 +503,7 @@ export async function getAttendees(classId: string) {
     return { success: true, attendees }
   } catch (error: any) {
     console.log("getAttendees caught error:", error)
-    return { error: error.message || "Error al obtener asistentes" }
+    return { error: mensajeUsuario(error, "Error al obtener asistentes") }
   }
 }
 
@@ -523,14 +524,14 @@ export async function createGymClasses(eventsToCreate: any[]) {
 
     if (error) {
       console.error("[createGymClasses] Supabase error:", error)
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/eventos")
     return { success: true }
   } catch (error: any) {
     console.error("[createGymClasses] Unexpected error:", error)
-    return { error: error.message || "Error al crear clases" }
+    return { error: mensajeUsuario(error, "Error al crear clases") }
   }
 }
 
@@ -551,14 +552,14 @@ export async function updateGymClass(id: string, updatePayload: any) {
 
     if (error) {
       console.error("[updateGymClass] Supabase error:", error)
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/eventos")
     return { success: true }
   } catch (error: any) {
     console.error("[updateGymClass] Unexpected error:", error)
-    return { error: error.message || "Error al actualizar clase" }
+    return { error: mensajeUsuario(error, "Error al actualizar clase") }
   }
 }
 
@@ -579,13 +580,13 @@ export async function updateGymClassesBulk(idsToUpdate: string[], updatePayload:
 
     if (error) {
       console.error("[updateGymClassesBulk] Supabase error:", error)
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/admin/eventos")
     return { success: true }
   } catch (error: any) {
     console.error("[updateGymClassesBulk] Unexpected error:", error)
-    return { error: error.message || "Error al actualizar clases" }
+    return { error: mensajeUsuario(error, "Error al actualizar clases") }
   }
 }

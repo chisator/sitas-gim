@@ -13,7 +13,7 @@ interface Exercise {
   sets: string
   reps: string
   weight?: string
-  rest?: number
+  duration?: string
   notes?: string
 }
 
@@ -55,7 +55,7 @@ export function ImportExercisesDialog({ isOpen, onOpenChange, onImport }: Import
           sets: String(row[setsIdx] || "3").trim(),
           reps: String(row[repsIdx] || "10").trim(),
           weight: weightIdx >= 0 && row[weightIdx] ? String(row[weightIdx]) : undefined,
-          rest: restIdx >= 0 && row[restIdx] ? parseInt(String(row[restIdx])) : undefined,
+          duration: restIdx >= 0 && row[restIdx] ? String(row[restIdx]).trim() : undefined,
           notes: notesIdx >= 0 && row[notesIdx] ? String(row[notesIdx]).trim() : undefined,
         })
       }
@@ -105,7 +105,7 @@ export function ImportExercisesDialog({ isOpen, onOpenChange, onImport }: Import
               sets: cols[setsIdx] || "3",
               reps: cols[repsIdx] || "10",
               weight: weightIdx >= 0 && cols[weightIdx] ? cols[weightIdx] : undefined,
-              rest: restIdx >= 0 && cols[restIdx] ? parseInt(cols[restIdx]) : undefined,
+              duration: restIdx >= 0 && cols[restIdx] ? cols[restIdx] : undefined,
               notes: notesIdx >= 0 ? cols[notesIdx] : undefined,
             })
           }

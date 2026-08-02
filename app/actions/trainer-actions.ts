@@ -1,5 +1,6 @@
 "use server"
 
+import { mensajeUsuario } from "@/lib/db-errors"
 import { createClient as createServerClient } from "@/lib/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
@@ -62,7 +63,7 @@ export async function updateRoutine(formData: {
     const { error: updateError } = await query
 
     if (updateError) {
-      return { error: updateError.message }
+      return { error: mensajeUsuario(updateError) }
     }
 
     // Si vienen userIds, sincronizar las asignaciones en routine_user_assignments.
@@ -76,7 +77,7 @@ export async function updateRoutine(formData: {
         .from("routine_user_assignments")
         .select("user_id")
         .eq("routine_id", formData.routineId)
-      if (readError) return { error: readError.message }
+      if (readError) return { error: mensajeUsuario(readError) }
 
       const currentUserIds = new Set((currentRows || []).map((r) => r.user_id))
       const toAdd = desiredUserIds.filter((uid) => !currentUserIds.has(uid))
@@ -93,7 +94,7 @@ export async function updateRoutine(formData: {
         const { error: insError } = await supabaseAdmin
           .from("routine_user_assignments")
           .upsert(rows, { onConflict: "routine_id,user_id", ignoreDuplicates: true })
-        if (insError) return { error: insError.message }
+        if (insError) return { error: mensajeUsuario(insError) }
       }
 
       if (toRemove.length > 0) {
@@ -102,7 +103,7 @@ export async function updateRoutine(formData: {
           .delete()
           .eq("routine_id", formData.routineId)
           .in("user_id", toRemove)
-        if (delError) return { error: delError.message }
+        if (delError) return { error: mensajeUsuario(delError) }
       }
     }
 
@@ -110,7 +111,7 @@ export async function updateRoutine(formData: {
     revalidatePath("/admin") // Revalidate admin page also
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al actualizar rutina" }
+    return { error: mensajeUsuario(error, "Error al actualizar rutina") }
   }
 }
 
@@ -138,14 +139,14 @@ export async function deleteRoutine(routineId: string) {
     const { error } = await query
 
     if (error) {
-      return { error: error.message }
+      return { error: mensajeUsuario(error) }
     }
 
     revalidatePath("/entrenador")
     revalidatePath("/admin") // Revalidate admin page also
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al eliminar rutina" }
+    return { error: mensajeUsuario(error, "Error al eliminar rutina") }
   }
 }
 
@@ -177,7 +178,7 @@ export async function renewRoutine({
       .single()
 
     if (getErr || !routine) {
-      return { error: getErr?.message || "Rutina no encontrada o sin permisos" }
+      return { error: mensajeUsuario(getErr, "Rutina no encontrada o sin permisos") }
     }
 
     let newEnd: Date | null = null
@@ -206,13 +207,13 @@ export async function renewRoutine({
       .eq("trainer_id", user.id)
 
     if (updateErr) {
-      return { error: updateErr.message }
+      return { error: mensajeUsuario(updateErr) }
     }
 
     revalidatePath("/entrenador")
     return { success: true }
   } catch (error: any) {
-    return { error: error.message || "Error al renovar rutina" }
+    return { error: mensajeUsuario(error, "Error al renovar rutina") }
   }
 }
 
@@ -251,7 +252,7 @@ export async function exportRoutine(routineId: string, format: "json" | "csv") {
       let csv = "name,sets,reps,weight,rest,notes\n"
       exercises.forEach((ex: any) => {
         const weight = ex.weight || ""
-        const rest = ex.rest || ""
+        const rest = ex.duration || ex.rest || ""
         const notes = (ex.notes || "").replace(/"/g, '""') // Escapar comillas
         csv += `"${ex.name}","${ex.sets || ""}","${ex.reps || ""}","${weight}","${rest}","${notes}"\n`
       })
@@ -260,7 +261,7 @@ export async function exportRoutine(routineId: string, format: "json" | "csv") {
 
     return { error: "Formato no soportado" }
   } catch (error: any) {
-    return { error: error.message || "Error al exportar rutina" }
+    return { error: mensajeUsuario(error, "Error al exportar rutina") }
   }
 }
 
@@ -310,7 +311,7 @@ export async function importRoutine(formData: {
       .single()
 
     if (insertErr || !inserted) {
-      return { error: insertErr?.message || "No se pudo crear la rutina" }
+      return { error: mensajeUsuario(insertErr, "No se pudo crear la rutina") }
     }
 
     // Asignar usuarios (una misma rutina puede compartirse entre varios deportistas)
@@ -323,7 +324,7 @@ export async function importRoutine(formData: {
       const { error: assignErr } = await supabase
         .from("routine_user_assignments")
         .insert(assignments)
-      if (assignErr) return { error: assignErr.message }
+      if (assignErr) return { error: mensajeUsuario(assignErr) }
     }
 
     // Revalidate trainer and deportista pages so cached content updates
@@ -331,6 +332,6 @@ export async function importRoutine(formData: {
     revalidatePath("/deportista")
     return { success: true, routineId: inserted.id }
   } catch (error: any) {
-    return { error: error.message || "Error al importar rutina" }
+    return { error: mensajeUsuario(error, "Error al importar rutina") }
   }
 }

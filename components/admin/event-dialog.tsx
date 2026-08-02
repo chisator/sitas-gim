@@ -42,6 +42,11 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>
 
+/** Fecha en hora local con formato YYYY-MM-DD, la que espera un <input type="date">. */
+function localDateInput(d: Date) {
+    return d.toLocaleDateString("en-CA")
+}
+
 interface EventDialogProps {
     children?: React.ReactNode
     onSuccess?: () => void
@@ -89,7 +94,11 @@ export function EventDialog({ children, onSuccess, eventToEdit }: EventDialogPro
                     title: eventToEdit.title,
                     description: eventToEdit.description || "",
                     capacity: eventToEdit.capacity || 20,
-                    date: startDate.toISOString().split('T')[0],
+                    // La fecha se toma en hora LOCAL, igual que la hora. Antes se
+                    // usaba toISOString() (UTC) junto a toTimeString() (local), así
+                    // que una clase del viernes 21:00 se precargaba como sábado y
+                    // al guardar se movía un día.
+                    date: localDateInput(startDate),
                     startTime: startDate.toTimeString().slice(0, 5),
                     endTime: endDate.toTimeString().slice(0, 5),
                     instructorId: eventToEdit.instructor_id || "",

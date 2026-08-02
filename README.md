@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SITAS FITNESS
 
-## Getting Started
+Gestión de gimnasio: rutinas, registros de entrenamiento, progreso y reservas de
+clases. Next.js 14 (App Router) + Supabase.
 
-First, run the development server:
+## Despliegues
+
+Los dos apuntan **a la misma base de datos de producción**. Tenerlo presente:
+cualquier prueba en Vercel modifica datos reales del gimnasio.
+
+| Entorno | Dónde | Para qué |
+|---|---|---|
+| Vercel | rama `main` | probar cambios |
+| VPS Hostinger | Docker, deploy manual | producción, la que usa el gimnasio |
+
+## Variables de entorno
+
+| Variable | Necesaria en | Si falta |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | build y runtime | la app no arranca en el navegador |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | build y runtime | ídem |
+| `SUPABASE_SERVICE_ROLE_KEY` | runtime | el build pasa, pero los paneles de admin y entrenador tiran 500 |
+
+Las `NEXT_PUBLIC_*` se inlinean **en tiempo de build**, así que hay que pasarlas
+al construir la imagen, no solo al ejecutarla.
+
+## Desarrollo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy al VPS
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="..." \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="..." \
+  -t sitas-gim .
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+docker run -d -p 3000:3000 --env-file .env --name sitas-gim sitas-gim
+```
 
-## Learn More
+## Base de datos
 
-To learn more about Next.js, take a look at the following resources:
+El esquema vive en `supabase/migrations/`. Antes de tocar nada, sincronizar con
+lo que realmente corre en producción:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx supabase db pull
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Algunos objetos se crearon a mano en el SQL Editor y pueden no estar en los
+archivos. Ante la duda, la base manda, no el repo.
 
-## Deploy on Vercel
+## Notas
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Las fechas de rutinas se guardan normalizadas a mediodía UTC y se comparan en
+  hora argentina (`lib/utils.ts`). No usar `new Date()` del servidor para
+  decidir si una rutina está vigente: el proceso corre en UTC.
+- Los créditos de clases viven en dos campos: `activity_credits` y
+  `expiring_activity_credits`. Del día 1 al 5 de cada mes el primero está vacío,
+  así que **siempre hay que mirar los dos**.
+- Las escrituras de créditos y los conteos de cupo van con service role
+  (`lib/admin.ts`): con el cliente del usuario, RLS solo deja ver las reservas
+  propias y los conteos dan cero.

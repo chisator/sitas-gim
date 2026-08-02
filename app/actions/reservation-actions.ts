@@ -1,5 +1,6 @@
 'use server'
 
+import { mensajeUsuario } from "@/lib/db-errors"
 import { createClient } from "@/lib/server"
 import { createAdminClient } from "@/lib/admin"
 import { revalidatePath } from "next/cache"
@@ -379,7 +380,7 @@ export async function refundReservationsForClasses(classIds: string[]) {
         .select('id, title')
         .in('id', classIds)
 
-    if (classesError) return { error: classesError.message }
+    if (classesError) return { error: mensajeUsuario(classesError) }
 
     const titleByClassId = new Map((classes || []).map(c => [c.id, c.title]))
 
@@ -388,7 +389,7 @@ export async function refundReservationsForClasses(classIds: string[]) {
         .select('id, user_id, class_id')
         .in('class_id', classIds)
 
-    if (reservationsError) return { error: reservationsError.message }
+    if (reservationsError) return { error: mensajeUsuario(reservationsError) }
     if (!reservations || reservations.length === 0) return { success: true, refunded: 0 }
 
     // Se agrupa por usuario para hacer una sola escritura por perfil
@@ -442,7 +443,7 @@ export async function refundReservationsForClasses(classIds: string[]) {
         .delete()
         .in('class_id', classIds)
 
-    if (deleteError) return { error: deleteError.message }
+    if (deleteError) return { error: mensajeUsuario(deleteError) }
 
     revalidatePath('/deportista')
     return { success: true, refunded }

@@ -1,5 +1,6 @@
 "use server"
 
+import { mensajeUsuario } from "@/lib/db-errors"
 import { createClient as createServerClient } from "@/lib/server"
 
 export async function getUniqueExercises() {
@@ -77,10 +78,18 @@ export async function getExerciseProgress(exerciseName: string) {
                     if (!isNaN(r) && r > 0) {
                         totalVolume += w * r
 
-                        // Estimated 1RM (Brzycki Formula)
-                        // 1RM = Weight / (1.0278 - (0.0278 * Reps))
-                        const oneRM = w / (1.0278 - (0.0278 * r))
-                        if (oneRM > maxOneRM) maxOneRM = oneRM
+                        // 1RM estimado (fórmula de Brzycki)
+                        // 1RM = Peso / (1.0278 - (0.0278 * Reps))
+                        //
+                        // Solo es válida hasta ~10 repeticiones. Con 35 reps el
+                        // divisor tiende a cero y el 1RM daba 37 veces el peso
+                        // levantado, lo que aplastaba todo el histórico del
+                        // gráfico. Un registro de abdominales o burpees alcanzaba
+                        // para arruinarlo.
+                        if (r <= 12) {
+                            const oneRM = w / (1.0278 - (0.0278 * r))
+                            if (oneRM > maxOneRM) maxOneRM = oneRM
+                        }
                     }
                 }
             })
@@ -97,6 +106,6 @@ export async function getExerciseProgress(exerciseName: string) {
 
         return { data: progressData }
     } catch (error: any) {
-        return { error: error.message }
+        return { error: mensajeUsuario(error) }
     }
 }

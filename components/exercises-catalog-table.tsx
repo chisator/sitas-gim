@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -102,7 +103,7 @@ export function ExercisesCatalogTable({ exercises }: ExercisesCatalogTableProps)
         try {
             const result = await deleteExerciseCatalogItem(id)
             if (result.error) {
-                alert(result.error)
+                toast.error(result.error)
             } else {
                 router.refresh()
             }

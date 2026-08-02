@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import type React from "react"
 
 import { useState } from "react"
@@ -216,7 +217,7 @@ export function UsersTable({ users }: UsersTableProps) {
     const result = await deleteUser(userId)
 
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     }
 
     setIsLoading(false)
@@ -465,7 +466,22 @@ export function UsersTable({ users }: UsersTableProps) {
           </TableBody>
         </Table>
 
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        {/* Al cerrar hay que limpiar: crear y editar comparten el mismo estado,
+            así que cancelar una edición y tocar "Crear Usuario" abría el
+            formulario precargado con los datos de la persona editada. */}
+        <Dialog open={isEditOpen} onOpenChange={(open) => {
+          setIsEditOpen(open)
+          if (!open) {
+            setEditingUser(null)
+            setEmail("")
+            setFullName("")
+            setRole("deportista")
+            setActivityCredits({ "Indoor Bike": 0, "Crossfit": 0, "Funcional": 0, "Box Training": 0 })
+            setEditPassword("")
+            setShowEditPassword(false)
+            setError(null)
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Usuario</DialogTitle>

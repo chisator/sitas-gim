@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -113,7 +114,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
     const result = await deleteRoutine(routine.id)
 
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
       setIsDeleting(false)
       return
     }

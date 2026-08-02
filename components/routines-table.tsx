@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -50,7 +51,7 @@ export function RoutinesTable({ routines, trainers, users = [] }: RoutinesTableP
     setIsDeleting(routineId)
     const result = await deleteRoutine(routineId)
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     }
     setIsDeleting(null)
     router.refresh()

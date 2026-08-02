@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -59,6 +59,50 @@ export function WorkoutLogForm({ routineId, routineTitle, initialExercises, exis
         }
     })
 
+    // Borrador local. El celular puede descartar la pestaña mientras el
+    // deportista está entre series (abre WhatsApp, se corta la señal, etc.) y
+    // hasta ahora todo vivía solo en memoria: se perdía la sesión entera.
+    // Solo se guarda borrador de registros nuevos; los que se están editando ya
+    // existen en la base.
+    const draftKey = existingLog ? null : `wlog-draft-${routineId}`
+    const [draftRestored, setDraftRestored] = useState(false)
+
+    useEffect(() => {
+        if (!draftKey || draftRestored) return
+        try {
+            const raw = window.localStorage.getItem(draftKey)
+            if (!raw) return
+            const draft = JSON.parse(raw)
+            if (draft?.entries?.length) {
+                setEntries(draft.entries)
+                if (draft.date) setDate(draft.date)
+                if (draft.notes) setNotes(draft.notes)
+                toast.info("Recuperamos lo que habías cargado")
+            }
+        } catch {
+            // Un borrador corrupto no debe impedir usar el formulario
+        } finally {
+            setDraftRestored(true)
+        }
+    }, [draftKey, draftRestored])
+
+    useEffect(() => {
+        if (!draftKey || !draftRestored) return
+        const hasData = entries.some((entry) =>
+            entry.sets_data.some((s) => s.weight || s.reps) || entry.notes
+        )
+        if (!hasData) return
+
+        const timer = setTimeout(() => {
+            try {
+                window.localStorage.setItem(draftKey, JSON.stringify({ date, notes, entries }))
+            } catch {
+                // Sin espacio en localStorage: se sigue sin borrador
+            }
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [draftKey, draftRestored, date, notes, entries])
+
     // State to manage open/closed exercises in UI
     const [openExercises, setOpenExercises] = useState<Record<number, boolean>>({})
 
@@ -90,10 +134,14 @@ export function WorkoutLogForm({ routineId, routineTitle, initialExercises, exis
     }
 
     const updateSet = (entryIndex: number, setIndex: number, field: keyof SetData, value: string) => {
+        // Se normaliza la coma decimal: en el teclado del celular lo natural es
+        // escribir "22,5", y con un <input type="number"> el navegador lo tomaba
+        // como inválido y vaciaba el campo mientras la persona tipeaba.
+        const clean = value.replace(",", ".").replace(/[^0-9.]/g, "")
         const newEntries = [...entries]
         newEntries[entryIndex].sets_data[setIndex] = {
             ...newEntries[entryIndex].sets_data[setIndex],
-            [field]: value
+            [field]: clean
         }
         setEntries(newEntries)
     }
@@ -125,10 +173,20 @@ export function WorkoutLogForm({ routineId, routineTitle, initialExercises, exis
                 toast.success("Registro creado")
             }
 
+            // Guardado de verdad: recién acá se descarta el borrador
+            if (draftKey) {
+                try { window.localStorage.removeItem(draftKey) } catch { }
+            }
+
             router.push(`/deportista/registros/${routineId}`)
             router.refresh()
         } catch (error: any) {
-            toast.error(error.message || "Error al guardar")
+            const sinConexion = typeof navigator !== "undefined" && !navigator.onLine
+            toast.error(sinConexion ? "Sin conexión" : (error.message || "Error al guardar"), {
+                description: sinConexion
+                    ? "Guardamos lo que cargaste en este dispositivo. Volvé a intentar cuando tengas señal."
+                    : undefined,
+            })
         } finally {
             setIsLoading(false)
         }
@@ -170,45 +228,54 @@ export function WorkoutLogForm({ routineId, routineTitle, initialExercises, exis
                         </CardHeader>
                         <CardContent className="p-4 space-y-4">
                             <div className="space-y-2">
-                                <div className="grid grid-cols-10 gap-2 mb-2 text-xs font-medium text-muted-foreground text-center">
+                                <div className="grid grid-cols-12 gap-2 mb-2 text-xs font-medium text-muted-foreground text-center">
                                     <div className="col-span-1">#</div>
                                     <div className="col-span-4">Peso (kg)</div>
                                     <div className="col-span-4">Reps</div>
-                                    <div className="col-span-1"></div>
+                                    <div className="col-span-3"></div>
                                 </div>
                                 {entry.sets_data.map((set, setIndex) => (
-                                    <div key={setIndex} className="grid grid-cols-10 gap-2 items-center">
+                                    <div key={setIndex} className="grid grid-cols-12 gap-2 items-center">
                                         <div className="col-span-1 text-center font-medium text-sm text-muted-foreground">
                                             {setIndex + 1}
                                         </div>
+                                        {/* type="text" + inputMode: abre el teclado numérico grande en el
+                                            celular y acepta la coma decimal sin vaciar el campo. */}
                                         <div className="col-span-4">
                                             <Input
-                                                type="number"
+                                                type="text"
+                                                inputMode="decimal"
                                                 placeholder="0"
+                                                aria-label={`Peso de la serie ${setIndex + 1}`}
                                                 value={set.weight}
                                                 onChange={(e) => updateSet(index, setIndex, "weight", e.target.value)}
-                                                className="text-center h-9"
+                                                className="text-center h-12 text-base"
                                             />
                                         </div>
                                         <div className="col-span-4">
                                             <Input
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 placeholder="0"
+                                                aria-label={`Repeticiones de la serie ${setIndex + 1}`}
                                                 value={set.reps}
                                                 onChange={(e) => updateSet(index, setIndex, "reps", e.target.value)}
-                                                className="text-center h-9"
+                                                className="text-center h-12 text-base"
                                             />
                                         </div>
-                                        <div className="col-span-1 flex justify-center">
+                                        {/* Separado del campo de reps y de 44px: antes eran 32px pegados
+                                            al input y se borraba la serie sin querer. */}
+                                        <div className="col-span-3 flex justify-end pl-1">
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-8 w-8 text-destructive/50 hover:text-destructive"
+                                                className="h-11 w-11 text-destructive/60 hover:text-destructive"
                                                 onClick={() => removeSet(index, setIndex)}
                                                 tabIndex={-1}
                                             >
                                                 <Trash2 className="h-4 w-4" />
+                                                <span className="sr-only">Eliminar serie {setIndex + 1}</span>
                                             </Button>
                                         </div>
                                     </div>
