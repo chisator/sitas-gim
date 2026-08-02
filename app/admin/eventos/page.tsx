@@ -73,7 +73,17 @@ export default function AdminEventosPage() {
                     .eq('id', event.id)
 
                 if (error) throw error
-                toast.success("Clase suspendida")
+
+                // Devolver los tickets: la clase suspendida ya no se puede usar
+                const { refundReservationsForClasses } = await import('@/app/actions/reservation-actions')
+                const refund = await refundReservationsForClasses([event.id])
+                if (refund.error) {
+                    toast.warning("Clase suspendida, pero no pudimos devolver los tickets", { description: refund.error })
+                } else if (refund.refunded) {
+                    toast.success(`Clase suspendida · ${refund.refunded} ticket(s) devuelto(s)`)
+                } else {
+                    toast.success("Clase suspendida")
+                }
             } else {
                 // Series delete logic
                 const originalDate = new Date(event.start_time)
@@ -101,13 +111,26 @@ export default function AdminEventosPage() {
                     return
                 }
 
+                // Primero devolver los tickets. Borrar la clase arrastra las
+                // reservas en cascada, así que si no se hace antes los socios
+                // pierden el ticket sin ningún aviso.
+                const { refundReservationsForClasses } = await import('@/app/actions/reservation-actions')
+                const refund = await refundReservationsForClasses(idsToDelete)
+                if (refund.error) {
+                    toast.error("No se borró nada: no pudimos devolver los tickets", { description: refund.error })
+                    return
+                }
+
                 const { error: deleteError } = await supabase
                     .from('gym_classes')
                     .delete()
                     .in('id', idsToDelete)
 
                 if (deleteError) throw deleteError
-                toast.success(`${idsToDelete.length} clases eliminadas de la serie`)
+                toast.success(
+                    `${idsToDelete.length} clases eliminadas de la serie`,
+                    refund.refunded ? { description: `${refund.refunded} ticket(s) devuelto(s) a los socios` } : undefined
+                )
             }
 
             fetchEvents()

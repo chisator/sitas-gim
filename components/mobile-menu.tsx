@@ -20,7 +20,13 @@ export function MobileMenu({ role }: MobileMenuProps) {
     const [open, setOpen] = useState(false)
     const [activityCredits, setActivityCredits] = useState<Record<string, number>>({})
     const [expiringCredits, setExpiringCredits] = useState<Record<string, number>>({})
+    const [creditsLoaded, setCreditsLoaded] = useState(false)
     const supabase = createClient()
+
+    // Hay que mirar los dos bolsillos: del 1 al 5 activity_credits queda vacío
+    const allCreditActivities = Array.from(
+        new Set([...Object.keys(activityCredits), ...Object.keys(expiringCredits)])
+    ).sort((a, b) => a.localeCompare(b))
 
     useEffect(() => {
         const handleSync = (e: any) => {
@@ -42,6 +48,7 @@ export function MobileMenu({ role }: MobileMenuProps) {
                         setExpiringCredits(profile.expiring_activity_credits || {})
                     }
                 }
+                setCreditsLoaded(true)
             }
             fetchCredits()
         }
@@ -69,7 +76,7 @@ export function MobileMenu({ role }: MobileMenuProps) {
                         <>
                             <div className="flex flex-col gap-2 mb-2 p-3 bg-secondary/50 rounded-lg">
                                 <h4 className="text-sm font-semibold uppercase text-muted-foreground tracking-wider mb-1">Mis Tickets de Clase</h4>
-                                {Object.keys(activityCredits).length > 0 ? Object.keys(activityCredits).map(activity => {
+                                {allCreditActivities.length > 0 ? allCreditActivities.map(activity => {
                                     const c = activityCredits[activity] || 0
                                     const e = expiringCredits[activity] || 0
                                     const total = c + e
@@ -83,7 +90,9 @@ export function MobileMenu({ role }: MobileMenuProps) {
                                             </div>
                                         </div>
                                     )
-                                }) : <p className="text-xs text-muted-foreground">Cargando billetes...</p>}
+                                }) : creditsLoaded
+                                    ? <p className="text-xs text-muted-foreground">Todavía no tenés tickets asignados. Pedilos en administración.</p>
+                                    : <p className="text-xs text-muted-foreground">Cargando tickets...</p>}
                             </div>
                         </>
                     )}

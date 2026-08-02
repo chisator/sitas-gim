@@ -1,12 +1,40 @@
 'use server'
 
 import { createClient } from "@/lib/server"
+import { createAdminClient } from "@/lib/admin"
 import { revalidatePath } from "next/cache"
 
-// Helper to check and renew credits
-async function checkAndRenewCredits(userId: string, supabase: any) {
+type Credits = Record<string, number>
+
+/**
+ * Devuelve el id del usuario autenticado. El userId que manda el cliente NO se
+ * usa para decidir sobre qué perfil operar: una server action es un endpoint
+ * HTTP público y cualquiera podría pasar el id de otra persona.
+ */
+async function getSessionUserId(): Promise<string | null> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    return user?.id ?? null
+}
+
+/**
+ * Renovación y expiración mensual de tickets.
+ *
+ * Día 1: lo que hay en activity_credits pasa a "por vencer".
+ * Día 6: lo que quedó "por vencer" se pierde.
+ *
+ * Ambas se evalúan en la MISMA pasada. Antes la expiración se salteaba cuando
+ * en la misma llamada había corrido la renovación, así que a quien entraba por
+ * primera vez después del día 6 los tickets le desaparecían recién en la
+ * segunda recarga de la página.
+ *
+ * Escribe con service role: el usuario no debe poder tocar sus propios créditos.
+ */
+async function checkAndRenewCredits(userId: string) {
     try {
-        const { data: profile, error } = await supabase
+        const admin = createAdminClient()
+
+        const { data: profile, error } = await admin
             .from('profiles')
             .select('activity_credits, expiring_activity_credits, last_renewal_date, last_expiration_date')
             .eq('id', userId)
@@ -18,14 +46,13 @@ async function checkAndRenewCredits(userId: string, supabase: any) {
         const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
         const currentMonthSixth = new Date(now.getFullYear(), now.getMonth(), 6)
 
-        let updates: any = {}
-        let currentCredits = profile.activity_credits || {}
-        let expiringCredits = profile.expiring_activity_credits || {}
+        const updates: Record<string, unknown> = {}
+        let currentCredits: Credits = profile.activity_credits || {}
+        let expiringCredits: Credits = profile.expiring_activity_credits || {}
 
-        // 1. Renewal Logic (1st of Month) -> Move tickets to Expiring
+        // 1. Renovación (día 1): todo pasa al bolsillo de "por vencer"
         const lastRenewal = new Date(profile.last_renewal_date || '2000-01-01')
         if (lastRenewal < currentMonthStart) {
-            // El día 1, todo pasa al bolsillo de "por vencer" y el principal queda en 0.
             expiringCredits = { ...currentCredits }
             currentCredits = {}
 
@@ -34,34 +61,46 @@ async function checkAndRenewCredits(userId: string, supabase: any) {
             updates.expiring_activity_credits = expiringCredits
         }
 
-        // 2. Expiration Logic (6th of Month) -> Wipe out Expiring
+        // 2. Expiración (día 6): se pierde lo que quedó sin usar
         const lastExpiration = new Date(profile.last_expiration_date || '2000-01-01')
-        // Si ya pasamos el 6, y la última expiración fue ANTES del inicio de mes...
-        if (now >= currentMonthSixth && lastExpiration < currentMonthStart && updates.expiring_activity_credits === undefined) {
-            
+        if (now >= currentMonthSixth && lastExpiration < currentMonthStart) {
             expiringCredits = {}
             updates.last_expiration_date = now.toISOString()
             updates.expiring_activity_credits = expiringCredits
         }
 
         if (Object.keys(updates).length > 0) {
-            await supabase.from('profiles').update(updates).eq('id', userId)
+            const { error: updateError } = await admin.from('profiles').update(updates).eq('id', userId)
+            if (updateError) console.error("[creditos] No se pudo aplicar la renovación:", updateError.message)
         }
-
     } catch (e) {
         console.error("Error in auto-renewal:", e)
     }
 }
 
-export async function reserveClass(classId: string, userId: string) {
-    const supabase = await createClient()
+/**
+ * ¿Los tickets "por vencer" siguen vigentes? Determina a qué bolsillo se
+ * devuelve un ticket al cancelar. Debe ser el inverso exacto del descuento
+ * (que consume primero los que vencen); si no, cancelar y volver a reservar
+ * convierte tickets por vencer en permanentes.
+ */
+function expiringWindowIsOpen(now = new Date()) {
+    return now < new Date(now.getFullYear(), now.getMonth(), 6)
+}
 
+export async function reserveClass(classId: string, _userId?: string) {
     try {
-        // Run auto-renewal/expiration check first
-        await checkAndRenewCredits(userId, supabase)
+        const userId = await getSessionUserId()
+        if (!userId) return { error: "Tenés que iniciar sesión para reservar" }
 
-        // 1. Get user profile and check credits
-        const { data: profile, error: profileError } = await supabase
+        await checkAndRenewCredits(userId)
+
+        // Los cupos y los créditos se leen y escriben con service role: RLS solo
+        // deja ver las reservas propias, así que contar con el cliente del
+        // usuario daba siempre 0 y el cupo nunca se aplicaba.
+        const admin = createAdminClient()
+
+        const { data: profile, error: profileError } = await admin
             .from('profiles')
             .select('activity_credits, expiring_activity_credits')
             .eq('id', userId)
@@ -71,10 +110,9 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "Usuario no encontrado" }
         }
 
-        // 2. Get class details to check title, date and past status
-        const { data: classData, error: classError } = await supabase
+        const { data: classData, error: classError } = await admin
             .from('gym_classes')
-            .select('title, start_time, capacity')
+            .select('title, start_time, capacity, is_cancelled')
             .eq('id', classId)
             .single()
 
@@ -82,29 +120,30 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "Clase no encontrada" }
         }
 
-        // Validate tickets for this specific class BEFORE moving forward
-        const activityTitle = classData.title;
-        let currentCredits = profile.activity_credits || {};
-        let expiringCredits = profile.expiring_activity_credits || {};
-        
-        let c = currentCredits[activityTitle] || 0;
-        let e = expiringCredits[activityTitle] || 0;
+        if (classData.is_cancelled) {
+            return { error: "Esta clase fue suspendida" }
+        }
+
+        const activityTitle = classData.title
+        const currentCredits: Credits = profile.activity_credits || {}
+        const expiringCredits: Credits = profile.expiring_activity_credits || {}
+
+        const c = currentCredits[activityTitle] || 0
+        const e = expiringCredits[activityTitle] || 0
 
         if (c <= 0 && e <= 0) {
             return { error: `No tienes tickets suficientes para ${activityTitle}` }
         }
 
         const classDate = new Date(classData.start_time)
-        const now = new Date()
-
-        if (classDate < now) {
+        if (classDate < new Date()) {
             return { error: "No puedes reservar una clase que ya ha pasado" }
         }
 
-        // 3. Check Capacity
-        const capacity = classData.capacity || 20 // Default fallback
+        // Cupo
+        const capacity = classData.capacity || 20
 
-        const { count: enrolledCount, error: enrollError } = await supabase
+        const { count: enrolledCount, error: enrollError } = await admin
             .from('reservations')
             .select('*', { count: 'exact', head: true })
             .eq('class_id', classId)
@@ -117,32 +156,28 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "La clase ya está llena. No quedan cupos disponibles." }
         }
 
-        // 4. Check existing reservation
-        const { data: existing } = await supabase
+        // Reserva duplicada
+        const { data: existing } = await admin
             .from('reservations')
             .select('id')
             .eq('user_id', userId)
             .eq('class_id', classId)
-            .single()
+            .maybeSingle()
 
         if (existing) {
             return { error: "Ya estás registrado en esta clase" }
         }
 
-        // 4. Check daily limit (Max 2 per day)
-        // We need to count reservations for this user on the same day as the target class
-        const startOfDay = new Date(classDate)
-        startOfDay.setHours(0, 0, 0, 0)
+        // Límite de 2 por día. La ventana se calcula sobre el día calendario
+        // argentino de la clase, no sobre el día UTC del servidor.
+        const { startUtc, endUtc } = argentineDayBounds(classDate)
 
-        const endOfDay = new Date(classDate)
-        endOfDay.setHours(23, 59, 59, 999)
-
-        const { count, error: countError } = await supabase
+        const { count, error: countError } = await admin
             .from('reservations')
-            .select('gym_classes!inner(start_time)', { count: 'exact', head: true }) // head: true returns count only
+            .select('gym_classes!inner(start_time)', { count: 'exact', head: true })
             .eq('user_id', userId)
-            .gte('gym_classes.start_time', startOfDay.toISOString())
-            .lte('gym_classes.start_time', endOfDay.toISOString())
+            .gte('gym_classes.start_time', startUtc)
+            .lte('gym_classes.start_time', endUtc)
 
         if (countError) {
             console.error("Error checking limits:", countError)
@@ -153,27 +188,23 @@ export async function reserveClass(classId: string, userId: string) {
             return { error: "No puedes reservar más de 2 clases por día" }
         }
 
-        // 5. Create reservation and deduct credit
-        const { error: insertError } = await supabase
+        const { error: insertError } = await admin
             .from('reservations')
-            .insert({
-                user_id: userId,
-                class_id: classId
-            })
+            .insert({ user_id: userId, class_id: classId })
 
         if (insertError) {
             console.error("Error creating reservation:", insertError)
             return { error: "Error al crear la reserva" }
         }
 
-        // Credit Deduction Logic: Use expiring first
+        // Se consumen primero los que vencen
         if (e > 0) {
-            expiringCredits[activityTitle] = e - 1;
+            expiringCredits[activityTitle] = e - 1
         } else {
-            currentCredits[activityTitle] = c - 1;
+            currentCredits[activityTitle] = c - 1
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await admin
             .from('profiles')
             .update({
                 activity_credits: currentCredits,
@@ -182,8 +213,7 @@ export async function reserveClass(classId: string, userId: string) {
             .eq('id', userId)
 
         if (updateError) {
-            // Rollback reservation if credit update fails
-            await supabase.from('reservations').delete().eq('user_id', userId).eq('class_id', classId)
+            await admin.from('reservations').delete().eq('user_id', userId).eq('class_id', classId)
             return { error: "Error al descontar el ticket del perfil" }
         }
 
@@ -196,27 +226,43 @@ export async function reserveClass(classId: string, userId: string) {
     }
 }
 
-export async function cancelReservation(classId: string, userId: string) {
-    const supabase = await createClient()
-
+export async function cancelReservation(classId: string, _userId?: string) {
     try {
-        // Run auto-renewal check
-        await checkAndRenewCredits(userId, supabase)
+        const userId = await getSessionUserId()
+        if (!userId) return { error: "Tenés que iniciar sesión" }
 
-        // 1. Check if reservation exists
-        const { data: existing, error: reservationError } = await supabase
+        await checkAndRenewCredits(userId)
+
+        const admin = createAdminClient()
+
+        const { data: existing } = await admin
             .from('reservations')
             .select('id')
             .eq('user_id', userId)
             .eq('class_id', classId)
-            .single()
+            .maybeSingle()
 
         if (!existing) {
             return { error: "No tienes una reserva para esta clase" }
         }
 
-        // 2. Delete reservation and refund credit
-        const { error: deleteError } = await supabase
+        const { data: profile } = await admin
+            .from('profiles')
+            .select('activity_credits, expiring_activity_credits')
+            .eq('id', userId)
+            .single()
+
+        const { data: classData } = await admin
+            .from('gym_classes')
+            .select('title')
+            .eq('id', classId)
+            .single()
+
+        if (!profile || !classData) {
+            return { error: "No pudimos recuperar los datos de la reserva" }
+        }
+
+        const { error: deleteError } = await admin
             .from('reservations')
             .delete()
             .eq('user_id', userId)
@@ -226,28 +272,29 @@ export async function cancelReservation(classId: string, userId: string) {
             return { error: "Error al cancelar la reserva" }
         }
 
-        // Refund logic: Add back to current activity_credits
-        const { data: profile } = await supabase
+        const currentCredits: Credits = profile.activity_credits || {}
+        const expiringCredits: Credits = profile.expiring_activity_credits || {}
+        const title = classData.title
+
+        if (expiringWindowIsOpen()) {
+            expiringCredits[title] = (expiringCredits[title] || 0) + 1
+        } else {
+            currentCredits[title] = (currentCredits[title] || 0) + 1
+        }
+
+        const { error: updateError } = await admin
             .from('profiles')
-            .select('activity_credits')
+            .update({
+                activity_credits: currentCredits,
+                expiring_activity_credits: expiringCredits
+            })
             .eq('id', userId)
-            .single()
-            
-        const { data: classData } = await supabase
-            .from('gym_classes')
-            .select('title')
-            .eq('id', classId)
-            .single()
 
-        if (profile && classData) {
-            const currentCredits = profile.activity_credits || {};
-            const title = classData.title;
-            currentCredits[title] = (currentCredits[title] || 0) + 1;
-
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ activity_credits: currentCredits })
-                .eq('id', userId)
+        if (updateError) {
+            // No se pudo devolver el ticket: se repone la reserva para que el
+            // socio no quede sin la clase Y sin el ticket.
+            await admin.from('reservations').insert({ user_id: userId, class_id: classId })
+            return { error: "No pudimos devolverte el ticket. La reserva sigue activa." }
         }
 
         revalidatePath('/deportista')
@@ -259,13 +306,13 @@ export async function cancelReservation(classId: string, userId: string) {
     }
 }
 
+export async function getUserReservations(_userId?: string) {
+    const userId = await getSessionUserId()
+    if (!userId) return []
 
-export async function getUserReservations(userId: string) {
+    await checkAndRenewCredits(userId)
+
     const supabase = await createClient()
-
-    // Check renewal on read too, so UI is accurate
-    await checkAndRenewCredits(userId, supabase)
-
     const { data, error } = await supabase
         .from('reservations')
         .select('class_id')
@@ -273,4 +320,148 @@ export async function getUserReservations(userId: string) {
 
     if (error) return []
     return data.map(r => r.class_id)
+}
+
+/**
+ * Cuántos inscriptos tiene cada clase. Necesita service role porque RLS solo
+ * deja ver las reservas propias: sin esto el deportista veía siempre 0.
+ */
+export async function getClassOccupancy(classIds: string[]) {
+    if (classIds.length === 0) return {}
+
+    const userId = await getSessionUserId()
+    if (!userId) return {}
+
+    const admin = createAdminClient()
+    const counts: Record<string, number> = {}
+
+    // Se consulta de a 100 para no armar una URL demasiado larga.
+    for (let i = 0; i < classIds.length; i += 100) {
+        const chunk = classIds.slice(i, i + 100)
+        const { data, error } = await admin
+            .from('reservations')
+            .select('class_id')
+            .in('class_id', chunk)
+
+        if (error) {
+            console.error("[reservas] No se pudo contar inscriptos:", error.message)
+            continue
+        }
+
+        for (const row of data || []) {
+            counts[row.class_id] = (counts[row.class_id] || 0) + 1
+        }
+    }
+
+    return counts
+}
+
+/**
+ * Devuelve los tickets de las reservas de una clase y las elimina.
+ * Se usa al suspender o borrar una clase: antes las reservas se borraban en
+ * cascada y los socios perdían el ticket sin aviso.
+ */
+export async function refundReservationsForClasses(classIds: string[]) {
+    if (classIds.length === 0) return { success: true, refunded: 0 }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const role = user?.user_metadata?.role
+
+    if (!user || (role !== "administrador" && role !== "entrenador")) {
+        return { error: "No tenés permisos para hacer esto" }
+    }
+
+    const admin = createAdminClient()
+
+    const { data: classes, error: classesError } = await admin
+        .from('gym_classes')
+        .select('id, title')
+        .in('id', classIds)
+
+    if (classesError) return { error: classesError.message }
+
+    const titleByClassId = new Map((classes || []).map(c => [c.id, c.title]))
+
+    const { data: reservations, error: reservationsError } = await admin
+        .from('reservations')
+        .select('id, user_id, class_id')
+        .in('class_id', classIds)
+
+    if (reservationsError) return { error: reservationsError.message }
+    if (!reservations || reservations.length === 0) return { success: true, refunded: 0 }
+
+    // Se agrupa por usuario para hacer una sola escritura por perfil
+    const perUser = new Map<string, string[]>()
+    for (const r of reservations) {
+        const title = titleByClassId.get(r.class_id)
+        if (!title) continue
+        const list = perUser.get(r.user_id) || []
+        list.push(title)
+        perUser.set(r.user_id, list)
+    }
+
+    const backToExpiring = expiringWindowIsOpen()
+    let refunded = 0
+
+    for (const [userId, titles] of perUser) {
+        const { data: profile } = await admin
+            .from('profiles')
+            .select('activity_credits, expiring_activity_credits')
+            .eq('id', userId)
+            .single()
+
+        if (!profile) continue
+
+        const currentCredits: Credits = profile.activity_credits || {}
+        const expiringCredits: Credits = profile.expiring_activity_credits || {}
+
+        for (const title of titles) {
+            if (backToExpiring) expiringCredits[title] = (expiringCredits[title] || 0) + 1
+            else currentCredits[title] = (currentCredits[title] || 0) + 1
+        }
+
+        const { error: updateError } = await admin
+            .from('profiles')
+            .update({
+                activity_credits: currentCredits,
+                expiring_activity_credits: expiringCredits
+            })
+            .eq('id', userId)
+
+        if (updateError) {
+            console.error(`[creditos] No se pudo devolver el ticket a ${userId}:`, updateError.message)
+            continue
+        }
+
+        refunded += titles.length
+    }
+
+    const { error: deleteError } = await admin
+        .from('reservations')
+        .delete()
+        .in('class_id', classIds)
+
+    if (deleteError) return { error: deleteError.message }
+
+    revalidatePath('/deportista')
+    return { success: true, refunded }
+}
+
+/**
+ * Inicio y fin del día calendario argentino (UTC-3) que contiene `date`,
+ * expresados en UTC. El servidor corre en UTC, así que usar setHours() daba
+ * una ventana corrida tres horas.
+ */
+function argentineDayBounds(date: Date) {
+    const AR_OFFSET_MS = 3 * 60 * 60 * 1000
+    const arDate = new Date(date.getTime() - AR_OFFSET_MS)
+    const y = arDate.getUTCFullYear()
+    const m = arDate.getUTCMonth()
+    const d = arDate.getUTCDate()
+
+    const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) + AR_OFFSET_MS)
+    const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) + AR_OFFSET_MS)
+
+    return { startUtc: startUtc.toISOString(), endUtc: endUtc.toISOString() }
 }

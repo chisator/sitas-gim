@@ -210,15 +210,24 @@ export async function updateUser(formData: {
       return { error: updateError.message }
     }
 
-    // Actualizar perfil
+    // Actualizar perfil.
+    // El formulario muestra el TOTAL de tickets (normales + por vencer), así que
+    // al guardar se consolida todo en activity_credits y se vacía el bolsillo de
+    // "por vencer". Si no, el total quedaría sumado dos veces.
+    const profileUpdate: Record<string, unknown> = {
+      email: formData.email,
+      full_name: formData.fullName,
+      role: formData.role,
+    }
+
+    if (formData.activityCredits !== undefined) {
+      profileUpdate.activity_credits = formData.activityCredits
+      profileUpdate.expiring_activity_credits = {}
+    }
+
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({
-        email: formData.email,
-        full_name: formData.fullName,
-        role: formData.role,
-        activity_credits: formData.activityCredits || {}
-      })
+      .update(profileUpdate)
       .eq("id", formData.userId)
 
     if (profileError) {

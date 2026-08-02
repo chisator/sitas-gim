@@ -51,6 +51,7 @@ export function ActivitiesCarousel() {
     const [activityCredits, setActivityCredits] = useState<Record<string, number>>({})
     const [expiringCredits, setExpiringCredits] = useState<Record<string, number>>({})
     const [userId, setUserId] = useState<string | null>(null)
+    const [creditsError, setCreditsError] = useState(false)
     const supabase = createClient()
 
     useEffect(() => {
@@ -132,28 +133,24 @@ export function ActivitiesCarousel() {
             sortedActivities.sort((a, b) => a.title.localeCompare(b.title))
             setActivities(sortedActivities)
 
-            // Fetch reservation counts
+            // Los inscriptos se cuentan en el servidor: RLS solo deja ver las
+            // reservas propias, así que contarlas desde acá daba siempre 0.
             if (classIds.length > 0) {
-                const { data: allReservations } = await supabase
-                    .from('reservations')
-                    .select('class_id')
-                    .in('class_id', classIds)
-
-                if (allReservations) {
-                    const counts: Record<string, number> = {}
-                    allReservations.forEach(r => {
-                        counts[r.class_id] = (counts[r.class_id] || 0) + 1
-                    })
-                    setReservationCounts(counts)
-                }
+                const { getClassOccupancy } = await import('@/app/actions/reservation-actions')
+                setReservationCounts(await getClassOccupancy(classIds))
             }
 
             // Fetch user data for reservation status
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 setUserId(user.id)
-                const { data: profile } = await supabase.from('profiles').select('activity_credits, expiring_activity_credits').eq('id', user.id).single()
-                if (profile) {
+                const { data: profile, error: profileError } = await supabase.from('profiles').select('activity_credits, expiring_activity_credits').eq('id', user.id).single()
+                if (profileError) {
+                    // Sin esto le decíamos "no tenés tickets" a gente que sí tiene
+                    console.error('Error cargando tickets:', profileError.message)
+                    setCreditsError(true)
+                } else if (profile) {
+                    setCreditsError(false)
                     setActivityCredits(profile.activity_credits || {})
                     setExpiringCredits(profile.expiring_activity_credits || {})
                 }
@@ -169,12 +166,26 @@ export function ActivitiesCarousel() {
         }
     }
 
+    // Los tickets viven en dos bolsillos: activity_credits y los "por vencer".
+    // Del 1 al 5 de cada mes el primero queda vacío, así que hay que mirar los dos
+    // o la app le dice "no tenés tickets" a alguien que sí los tiene.
+    const allCreditActivities = Array.from(
+        new Set([...Object.keys(activityCredits), ...Object.keys(expiringCredits)])
+    ).sort((a, b) => a.localeCompare(b))
+
     const handleReserve = async (classId: string, activityTitle: string, classTime: string) => {
         if (!userId) return
 
         const currentCredits = activityCredits[activityTitle] || 0
         const expiring = expiringCredits[activityTitle] || 0
         const totalCredits = currentCredits + expiring
+
+        if (creditsError) {
+            toast.error("No pudimos verificar tus tickets", {
+                description: "Revisá tu conexión y volvé a intentar.",
+            })
+            return
+        }
 
         if (totalCredits <= 0) {
             toast.error(`No tienes tickets para ${activityTitle}`, {
@@ -254,7 +265,7 @@ export function ActivitiesCarousel() {
         <div className="w-full py-4">
             <h3 className="hidden md:block text-center text-muted-foreground text-sm mb-4 uppercase tracking-widest">Mis Tickets de Clase</h3>
             <div className="hidden md:flex flex-wrap justify-center gap-4 mb-8 max-w-[1400px] mx-auto">
-                {Object.keys(activityCredits).length > 0 ? Object.keys(activityCredits).map((activity) => {
+                {allCreditActivities.length > 0 ? allCreditActivities.map((activity) => {
                     const current = activityCredits[activity] || 0;
                     const expiring = expiringCredits[activity] || 0;
                     const total = current + expiring;

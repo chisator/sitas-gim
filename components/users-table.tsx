@@ -154,12 +154,17 @@ export function UsersTable({ users }: UsersTableProps) {
     setEmail(user.email)
     setFullName(user.full_name)
     setRole(user.role)
-    const storedTickets = user.activity_credits || {}
+    // Se muestra el TOTAL de los dos bolsillos (normales + por vencer). Antes se
+    // leía solo activity_credits, que del 1 al 5 de cada mes está vacío: el admin
+    // veía 0, escribía el número de nuevo y al socio le quedaba el doble.
+    const stored = user.activity_credits || {}
+    const expiring = user.expiring_activity_credits || {}
+    const totalFor = (a: string) => (stored[a] || 0) + (expiring[a] || 0)
     setActivityCredits({
-      "Indoor Bike": storedTickets["Indoor Bike"] || 0,
-      "Crossfit": storedTickets["Crossfit"] || 0,
-      "Funcional": storedTickets["Funcional"] || 0,
-      "Box Training": storedTickets["Box Training"] || 0
+      "Indoor Bike": totalFor("Indoor Bike"),
+      "Crossfit": totalFor("Crossfit"),
+      "Funcional": totalFor("Funcional"),
+      "Box Training": totalFor("Box Training")
     })
     setEditPassword("")
     setShowEditPassword(false)
@@ -438,7 +443,7 @@ export function UsersTable({ users }: UsersTableProps) {
                 <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{getTotalCredits(user.activity_credits)}</TableCell>
+                <TableCell>{getTotalCredits(user.activity_credits) + getTotalCredits(user.expiring_activity_credits)}</TableCell>
                 <TableCell>{new Date(user.created_at).toLocaleDateString("es-ES")}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
