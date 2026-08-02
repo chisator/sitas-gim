@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import * as XLSX from "xlsx"
+// xlsx pesa ~138 KB gzip. Se carga bajo demanda: entraba en el bundle inicial
+// del panel del entrenador solo por estar importado arriba.
 
 interface Exercise {
   name: string
@@ -27,7 +28,8 @@ export function ImportExercisesDialog({ isOpen, onOpenChange, onImport }: Import
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const parseExcelFile = (arrayBuffer: ArrayBuffer): Exercise[] => {
+  const parseExcelFile = async (arrayBuffer: ArrayBuffer): Promise<Exercise[]> => {
+    const XLSX = await import("xlsx")
     const workbook = XLSX.read(arrayBuffer, { type: "array" })
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
     const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][]
@@ -110,7 +112,7 @@ export function ImportExercisesDialog({ isOpen, onOpenChange, onImport }: Import
         }
       } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
         const arrayBuffer = await file.arrayBuffer()
-        exercises = parseExcelFile(arrayBuffer)
+        exercises = await parseExcelFile(arrayBuffer)
       } else {
         setError("Formato no soportado (JSON, CSV o Excel)")
         setIsLoading(false)

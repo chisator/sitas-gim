@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { exportRoutine } from "@/app/actions/trainer-actions"
-import * as XLSX from "xlsx"
+// xlsx pesa ~138 KB gzip. Se carga bajo demanda: entraba en el bundle inicial
+// del panel del entrenador solo por estar importado arriba.
 
 interface ExportDialogProps {
   isOpen: boolean
@@ -37,6 +38,7 @@ export function ExportImportDialog({
         }
 
         const exercises = JSON.parse(result.data!)
+        const XLSX = await import("xlsx")
         
         // Crear workbook y agregar datos
         const ws = XLSX.utils.json_to_sheet(exercises)

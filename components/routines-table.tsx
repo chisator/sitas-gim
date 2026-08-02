@@ -143,7 +143,7 @@ export function RoutinesTable({ routines, trainers, users = [] }: RoutinesTableP
                 </TableCell>
                 <TableCell>{new Date(routine.start_date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}</TableCell>
                 <TableCell>{new Date(routine.end_date).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}</TableCell>
-                <TableCell>{routine.exercises?.length || 0}</TableCell>
+                <TableCell>{routine.exercises_count ?? 0}</TableCell>
                 <TableCell className="flex gap-2 justify-end">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/entrenador/editar-rutina/${routine.id}`}>

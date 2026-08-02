@@ -51,11 +51,22 @@ export default async function AdminPage() {
     )
     .order("created_at", { ascending: false })
 
-  // Obtener todas las rutinas
-  const { data: routines } = await supabase.from("routines").select(`
-    *,
+  // Obtener todas las rutinas.
+  // Se piden columnas explícitas a propósito: con select("*") venía también
+  // `exercises` (jsonb de 2-4 KB por rutina), que se pasa como prop a dos
+  // client components y por lo tanto viajaba entero hasta el celular del admin
+  // solo para mostrar una tabla de títulos.
+  const { data: routinesRaw } = await supabase.from("routines").select(`
+    id, title, trainer_id, created_at, start_date, end_date, exercises,
     routine_user_assignments(user_id)
   `)
+
+  // El conteo de ejercicios se calcula acá y el jsonb se descarta antes de
+  // pasarlo a los client components.
+  const routines = (routinesRaw || []).map(({ exercises, ...rest }) => ({
+    ...rest,
+    exercises_count: Array.isArray(exercises) ? exercises.length : 0,
+  }))
 
   // Calcular estadísticas
   const totalUsers = users?.length || 0
@@ -211,11 +222,11 @@ export default async function AdminPage() {
           </TabsContent>
 
           <TabsContent value="routines">
-            <RoutinesTable routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
+            <RoutinesTable routines={routines} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
           </TabsContent>
 
           <TabsContent value="stats">
-            <TrainerRoutinesStats routines={routines || []} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
+            <TrainerRoutinesStats routines={routines} trainers={users?.filter(u => u.role === 'entrenador') || []} users={users || []} />
           </TabsContent>
         </Tabs>
       </main>

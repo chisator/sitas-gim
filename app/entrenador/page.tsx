@@ -11,6 +11,13 @@ import { TrainerUserFilter } from "@/components/trainer-user-filter"
 import { Logo } from "@/components/logo"
 import { isRoutineActive } from "@/lib/utils"
 
+/** Parte una lista en tandas, para no armar URLs que el proxy rechace. */
+function chunked<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
 
 
 export default async function EntrenadorPage({ searchParams }: { searchParams?: { userId?: string } }) {
@@ -73,42 +80,66 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
       routines = []
     }
   } else {
-    // Si no hay filtro, mostrar todas las rutinas asignadas a sus alumnos asignados OR creadas por este entrenador
-    const { data: assignedRoutinesQuery } = assignedUserIds.length > 0 
-      ? await supabaseAdmin.from("routine_user_assignments").select("routine_id").in("user_id", assignedUserIds) 
-      : { data: [] }
-    const routineIds = (assignedRoutinesQuery || []).map((r: any) => r.routine_id)
-    
-    let query = supabaseAdmin.from("routines").select("*").order("end_date", { ascending: false })
-    
-    if (routineIds.length > 0) {
-      query = query.or(`id.in.(${routineIds.join(',')}),trainer_id.eq.${user.id}`)
-    } else {
-      query = query.eq("trainer_id", user.id)
+    // Rutinas asignadas a sus alumnos, más las creadas por él.
+    //
+    // Antes esto metía TODOS los ids en la URL (`.in(user_id, [...])` y un
+    // `.or(id.in.(...))`). Como al crear un deportista se lo asigna a todos los
+    // entrenadores, esa lista es el padrón completo: a partir de ~190 socios la
+    // URL superaba el límite del proxy y la página devolvía 414. Ahora se
+    // consulta por tandas y se combinan los resultados.
+    const assignedRoutineIds = new Set<string>()
+    for (const chunk of chunked(assignedUserIds, 100)) {
+      const { data } = await supabaseAdmin
+        .from("routine_user_assignments")
+        .select("routine_id")
+        .in("user_id", chunk)
+      for (const row of data || []) assignedRoutineIds.add(row.routine_id)
     }
-    const { data } = await query
-    routines = data || []
+
+    const byId = new Map<string, any>()
+
+    const { data: ownRoutines } = await supabaseAdmin
+      .from("routines")
+      .select("*")
+      .eq("trainer_id", user.id)
+      .order("end_date", { ascending: false })
+    for (const r of ownRoutines || []) byId.set(r.id, r)
+
+    for (const chunk of chunked([...assignedRoutineIds], 100)) {
+      const { data } = await supabaseAdmin
+        .from("routines")
+        .select("*")
+        .in("id", chunk)
+        .order("end_date", { ascending: false })
+      for (const r of data || []) byId.set(r.id, r)
+    }
+
+    routines = [...byId.values()].sort((a, b) =>
+      String(b.end_date || "").localeCompare(String(a.end_date || ""))
+    )
   }
 
   // Anexar los deportistas asignados a cada rutina (una rutina puede compartirse entre varios)
   if (routines.length > 0) {
-    const { data: routineAssignmentRows, error: assignmentsError } = await supabaseAdmin
-      .from("routine_user_assignments")
-      .select("routine_id, user_id")
-      .in("routine_id", routines.map((r) => r.id))
-
-    // Si esto falla (p. ej. URL demasiado larga con muchas rutinas), las tarjetas
-    // simplemente no muestran los asignados. Dejamos rastro para no depurar a ciegas.
-    if (assignmentsError) {
-      console.error("[entrenador] No se pudieron cargar los asignados de las rutinas:", assignmentsError.message)
-    }
-
     const athleteNameById = new Map((athletes || []).map((a) => [a.id, a.full_name]))
     const namesByRoutineId = new Map<string, string[]>()
-    for (const row of routineAssignmentRows || []) {
-      const list = namesByRoutineId.get(row.routine_id) || []
-      list.push(athleteNameById.get(row.user_id) || "Deportista")
-      namesByRoutineId.set(row.routine_id, list)
+
+    for (const chunk of chunked(routines.map((r) => r.id), 100)) {
+      const { data: routineAssignmentRows, error: assignmentsError } = await supabaseAdmin
+        .from("routine_user_assignments")
+        .select("routine_id, user_id")
+        .in("routine_id", chunk)
+
+      if (assignmentsError) {
+        console.error("[entrenador] No se pudieron cargar los asignados de las rutinas:", assignmentsError.message)
+        continue
+      }
+
+      for (const row of routineAssignmentRows || []) {
+        const list = namesByRoutineId.get(row.routine_id) || []
+        list.push(athleteNameById.get(row.user_id) || "Deportista")
+        namesByRoutineId.set(row.routine_id, list)
+      }
     }
 
     routines = routines.map((r) => ({
