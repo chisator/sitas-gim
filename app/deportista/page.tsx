@@ -9,6 +9,7 @@ import { RoutineCard } from "@/components/routine-card"
 import Image from "next/image"
 import { ActivitiesCarousel } from "@/components/activities-carousel"
 import { Logo } from "@/components/logo"
+import { isRoutineActive } from "@/lib/utils"
 
 
 
@@ -65,23 +66,9 @@ export default async function DeportistaPage() {
   // Calcular estadísticas
   const totalRoutines = routinesWithTrainers?.length || 0
 
-  // Filtrar rutinas por fecha
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const upcomingRoutines = routinesWithTrainers?.filter((r) => {
-    const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
-    if (!routineEnd) return false
-    routineEnd.setHours(0, 0, 0, 0)
-    return routineEnd >= today
-  })
-
-  const pastRoutines = routinesWithTrainers?.filter((r) => {
-    const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
-    if (!routineEnd) return false
-    routineEnd.setHours(0, 0, 0, 0)
-    return routineEnd < today
-  })
+  // Filtrar rutinas por fecha (comparación en hora argentina, no en la del servidor)
+  const upcomingRoutines = routinesWithTrainers?.filter((r) => isRoutineActive(r))
+  const pastRoutines = routinesWithTrainers?.filter((r) => !isRoutineActive(r))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">

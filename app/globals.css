@@ -78,8 +78,9 @@
   /* Rosa muy oscuro/morado para acentos sutiles */
   --accent-foreground: oklch(0.98 0 0);
 
-  --destructive: oklch(0.4 0.15 25);
-  /* Rojo */
+  /* Rojo. Aclarado: en 0.4 el texto de error quedaba en ~2.4:1 sobre el fondo
+     negro, muy por debajo del mínimo legible. Ahora ronda 7:1. */
+  --destructive: oklch(0.68 0.19 25);
   --destructive-foreground: oklch(0.98 0 0);
 
   --border: oklch(0.2 0 0);

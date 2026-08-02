@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.github
+.vscode
+.env
+.env.*
+*.md
+!README.md
+scripts
+supabase
+beep.txt
+generate_beep.js
+test_insert.js
+npm-debug.log*
+*.tsbuildinfo

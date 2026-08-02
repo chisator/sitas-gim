@@ -67,7 +67,7 @@ export default function LoginPage() {
             <Logo size={280} />
             {/*
             <div className="relative w-72 h-72 mr-2 top-20">
-              <Image src="/logo.png" alt="SITAS FITNESS" fill className="object-contain" priority />
+              <Image src="/logo.webp" alt="SITAS FITNESS" fill className="object-contain" priority />
             </div>
             */}
             <p className="text-muted-foreground z-10">Sistema de gestión de entrenamientos</p>

@@ -88,7 +88,7 @@ export default async function AdminPage() {
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
-              <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-purple-100 text-purple-800 dark:bg-purple-900">
+              <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100">
                 Administrador
               </Badge>
             </div>

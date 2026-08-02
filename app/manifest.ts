@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
         description: "Aplicación de gestión de entrenamientos SITAS FITNESS",
         start_url: "/",
         display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#059669",
+        background_color: "#000000",
+        theme_color: "#20fdee",
         icons: [
             {
                 src: "/icon-192x192.png",

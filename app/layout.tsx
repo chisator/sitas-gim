@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { ServiceWorkerUpdater } from "@/components/sw-updater";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "@/components/bottom-nav";
 import "./globals.css";
@@ -10,10 +9,12 @@ export const metadata: Metadata = {
   title: "SITAS FITNESS",
   description: "SITAS FITNESS",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/icon-192x192.png",
+    apple: "/icon-192x192.png",
   },
-  manifest: "/manifest.json",
+  // Next sirve el manifest en /manifest.webmanifest (app/manifest.ts).
+  // Apuntar a /manifest.json daba 404 y Android no ofrecía instalar la app.
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -25,11 +26,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#059669",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -38,11 +38,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="es" className="dark">
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <ServiceWorkerUpdater />
         <div className="pb-16 md:pb-0">
           {children}
         </div>

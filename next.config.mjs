@@ -4,7 +4,9 @@ const withPWA = withPWAInit({
   dest: "public",
   cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
-  reloadOnOnline: true,
+  // Recargaba la página entera al recuperar la señal. Un deportista cargando
+  // sus series en el gimnasio perdía todo lo tipeado.
+  reloadOnOnline: false,
   swcMinify: true,
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
@@ -15,13 +17,19 @@ const withPWA = withPWAInit({
         handler: 'NetworkOnly',
       },
       {
-        urlPattern: /^https?.*/,
-        handler: 'NetworkFirst',
+        // Nunca cachear la API: se llegaban a servir cupos y reservas de hasta
+        // 24 h de antigüedad.
+        urlPattern: /supabase\.co\/(rest|auth)\/v1/,
+        handler: 'NetworkOnly',
+      },
+      {
+        urlPattern: /^https?.*\.(?:js|css|woff2?|png|jpg|jpeg|webp|svg|ico)$/,
+        handler: 'StaleWhileRevalidate',
         options: {
-          cacheName: 'general-cache',
+          cacheName: 'assets-cache',
           expiration: {
-            maxEntries: 200,
-            maxAgeSeconds: 24 * 60 * 60, // 24 hours
+            maxEntries: 120,
+            maxAgeSeconds: 7 * 24 * 60 * 60,
           },
         },
       },

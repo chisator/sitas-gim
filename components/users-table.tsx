@@ -224,9 +224,9 @@ export function UsersTable({ users }: UsersTableProps) {
 
   const getRoleBadge = (role: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "outline"; className: string }> = {
-      deportista: { variant: "outline", className: "bg-blue-100 text-blue-800 dark:bg-blue-900" },
-      entrenador: { variant: "outline", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900" },
-      administrador: { variant: "outline", className: "bg-purple-100 text-purple-800 dark:bg-purple-900" },
+      deportista: { variant: "outline", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" },
+      entrenador: { variant: "outline", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100" },
+      administrador: { variant: "outline", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100" },
     }
 
     const config = variants[role] || variants.deportista

@@ -6,5 +6,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Se excluyen el service worker, workbox y el manifest: cada pedido de esos
+  // archivos disparaba un getUser() contra Supabase, y el manifest además
+  // redirigía a /auth/login por no estar en las rutas públicas.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 }

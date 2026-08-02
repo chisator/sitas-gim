@@ -9,6 +9,7 @@ import { TrainerRoutineCard } from "@/components/trainer-routine-card"
 import Link from "next/link"
 import { TrainerUserFilter } from "@/components/trainer-user-filter"
 import { Logo } from "@/components/logo"
+import { isRoutineActive } from "@/lib/utils"
 
 
 
@@ -136,24 +137,9 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
   // Calcular estadísticas
   const totalRoutines = routines?.length || 0
   const totalAssignedUsers = assignedUserIds.length || 0
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const upcomingRoutines =
-    routines?.filter((r) => {
-      const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
-      if (!routineEnd) return false
-      routineEnd.setHours(0, 0, 0, 0)
-      return routineEnd >= today
-    }) || []
-
-  const pastRoutines =
-    routines?.filter((r) => {
-      const routineEnd = r.end_date ? new Date(r.end_date) : r.start_date ? new Date(r.start_date) : null
-      if (!routineEnd) return false
-      routineEnd.setHours(0, 0, 0, 0)
-      return routineEnd < today
-    }) || []
+  // Comparación en hora argentina, no en la del servidor
+  const upcomingRoutines = routines?.filter((r) => isRoutineActive(r)) || []
+  const pastRoutines = routines?.filter((r) => !isRoutineActive(r)) || []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
@@ -180,7 +166,7 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{profile?.full_name}</p>
-              <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-emerald-100 text-emerald-800 dark:bg-emerald-900">
+              <Badge variant="secondary" className="text-xs hidden sm:inline-flex bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100">
                 Entrenador
               </Badge>
             </div>
