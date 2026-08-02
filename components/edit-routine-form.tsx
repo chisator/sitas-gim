@@ -47,7 +47,9 @@ export function EditRoutineForm({ routine, athletes, assignedUserIds = [], isAdm
 
   const [title, setTitle] = useState(routine.title)
   const [description, setDescription] = useState(routine.description || "")
-  const initialUserIds = assignedUserIds.length > 0 ? assignedUserIds : [routine.user_id || ""]
+  // Se deduplica al cargar: si la tabla trae filas repetidas (todavía no hay
+  // UNIQUE(routine_id, user_id)) se abrirían dos slots con el mismo deportista.
+  const initialUserIds = assignedUserIds.length > 0 ? [...new Set(assignedUserIds)] : [routine.user_id || ""]
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(initialUserIds)
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>(routine.trainer_id)
   const [startDate, setStartDate] = useState(
@@ -204,7 +206,7 @@ export function EditRoutineForm({ routine, athletes, assignedUserIds = [], isAdm
                         type="button"
                       >
                         {userId
-                          ? sortedAthletes.find((athlete) => athlete.id === userId)?.full_name
+                          ? sortedAthletes.find((athlete) => athlete.id === userId)?.full_name || "Deportista sin nombre"
                           : "Seleccionar deportista..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>

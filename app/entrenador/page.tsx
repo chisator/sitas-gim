@@ -91,10 +91,16 @@ export default async function EntrenadorPage({ searchParams }: { searchParams?: 
 
   // Anexar los deportistas asignados a cada rutina (una rutina puede compartirse entre varios)
   if (routines.length > 0) {
-    const { data: routineAssignmentRows } = await supabaseAdmin
+    const { data: routineAssignmentRows, error: assignmentsError } = await supabaseAdmin
       .from("routine_user_assignments")
       .select("routine_id, user_id")
       .in("routine_id", routines.map((r) => r.id))
+
+    // Si esto falla (p. ej. URL demasiado larga con muchas rutinas), las tarjetas
+    // simplemente no muestran los asignados. Dejamos rastro para no depurar a ciegas.
+    if (assignmentsError) {
+      console.error("[entrenador] No se pudieron cargar los asignados de las rutinas:", assignmentsError.message)
+    }
 
     const athleteNameById = new Map((athletes || []).map((a) => [a.id, a.full_name]))
     const namesByRoutineId = new Map<string, string[]>()

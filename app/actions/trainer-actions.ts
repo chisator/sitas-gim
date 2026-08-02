@@ -91,7 +91,8 @@ export async function updateRoutine(formData: {
         else seenUserIds.add(row.user_id)
       }
       if (duplicateRowIds.length > 0) {
-        await supabaseAdmin.from("routine_user_assignments").delete().in("id", duplicateRowIds)
+        const { error: dedupError } = await supabaseAdmin.from("routine_user_assignments").delete().in("id", duplicateRowIds)
+        if (dedupError) return { error: dedupError.message }
       }
 
       if (toAdd.length > 0) {

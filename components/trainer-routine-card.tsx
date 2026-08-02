@@ -102,7 +102,11 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
 
   // ... (handlers remain same)
   const handleDelete = async () => {
-    if (!confirm("¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.")) {
+    // La rutina es compartida: eliminarla la saca de TODOS los deportistas asignados.
+    const alcance = assignedNames.length > 1
+      ? `\n\nEsta rutina está asignada a ${assignedNames.length} deportistas y se les quitará a todos:\n${assignedNames.join(", ")}.`
+      : ""
+    if (!confirm(`¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.${alcance}`)) {
       return
     }
     setIsDeleting(true)
@@ -175,8 +179,8 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
         {assignedNames.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            {assignedNames.slice(0, 3).map((name: string) => (
-              <Badge key={name} variant="secondary" className="text-[11px] font-normal">
+            {assignedNames.slice(0, 3).map((name: string, i: number) => (
+              <Badge key={`${name}-${i}`} variant="secondary" className="text-[11px] font-normal">
                 {name}
               </Badge>
             ))}
@@ -307,6 +311,7 @@ export function TrainerRoutineCard({ routine, isPast = false, index = 0 }: Train
         onOpenChange={setShowRenewDialog}
         routineId={routine.id}
         currentEndDate={routine.end_date}
+        assignedNames={assignedNames}
       />
 
       <ExportImportDialog

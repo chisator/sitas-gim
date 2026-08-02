@@ -251,7 +251,7 @@ export function CreateRoutineForm({ athletes, creatorId, trainers = [], isAdmin 
                       type="button"
                     >
                       {userId
-                        ? sortedAthletes.find((athlete) => athlete.id === userId)?.full_name
+                        ? sortedAthletes.find((athlete) => athlete.id === userId)?.full_name || "Deportista sin nombre"
                         : "Seleccionar deportista..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
